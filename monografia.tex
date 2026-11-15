@@ -1,0 +1,126 @@
+%% -------------------------------------------------------------------------------
+%%  Modelo: Michel Pires da Silva (UNIFOR-MG)
+%%  Autor: Tiago Alves de Souza Lima
+%%  Orientador: Prof. Me. Valter Ribeiro Lima Júnior
+%%  Compilação: pdflatex -> bibtex -> pdflatex -> pdflatex
+%% -------------------------------------------------------------------------------
+
+\documentclass[a4paper,12pt]{book}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[english,brazil]{babel}
+\usepackage{calc}
+\usepackage{graphicx}
+\usepackage[footnotesize,SF]{subfigure}
+\usepackage{setspace}
+\usepackage[sf,bf,compact,topmarks,calcwidth,pagestyles]{titlesec}
+\usepackage{titletoc}
+\usepackage{fancybox}
+\usepackage{fancyhdr}
+\usepackage{verbatim}
+\usepackage{indentfirst}
+\usepackage{color}
+\usepackage{colortbl}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{tikz}
+\usetikzlibrary{positioning,fit,shapes.geometric,arrows.meta}
+\usepackage{hyperref}
+\usepackage{uniformg}
+\usepackage[alf]{abntex2cite}
+
+%------------------------------Estilo dos capítulos ------------------------------------
+
+\providecommand{\larguracap}{2.5cm}
+
+\titleformat{\chapter}[display]
+{\vspace{2cm}\normalfont\Huge\sffamily\bfseries}%
+{%
+\begin{minipage}{\linewidth-\larguracap}%
+\begin{flushright}%
+\begin{minipage}{\linewidth-1cm}%
+\titlerule[2pt]%
+\vspace{2pt}%
+\titlerule%
+\end{minipage}%
+\end{flushright}%
+\end{minipage}%
+\begin{minipage}{\larguracap}%
+\begin{flushleft} \sf\large\bfseries%
+\begin{tabular}{|c|}%
+\rowcolor{black}{\color{white}\parbox{\larguracap}{\centering \chaptertitlename}}\\%
+{\parbox[c][{\larguracap-0.7cm}][c]{\larguracap}{\centering \fontsize{45pt}{50pt} \selectfont \thechapter}}\\%
+\hline%
+\end{tabular}%
+\end{flushleft}%
+\end{minipage}%
+}
+{2pt}%
+{\centering}%
+[%
+\vspace{1ex}%
+{\titlerule}%
+\vspace{2pt}%
+{\titlerule[2pt]}%
+\vspace{1ex}%
+]
+%---------------------------------------------------------------------------------------------------------
+
+\geometry{left=2cm,right=2cm,top=2cm,bottom=2cm}
+\graphicspath{{imagens/}}
+\onehalfspacing
+
+\hypersetup{
+    pdftitle={Análise Comparativa entre Arquitetura Monolítica e Arquitetura de Microsserviços},
+    pdfauthor={Tiago Alves de Souza Lima},
+    hidelinks
+}
+
+\begin{document}
+
+\Jautor{Tiago Alves de Souza Lima}
+\Jorientador{\textup{Orientador:} Prof. Me. Valter Ribeiro Lima Júnior}
+\Jtitulo{Análise Comparativa entre Arquitetura Monolítica e Arquitetura de Microsserviços}
+\Jdata{2026}
+\Jlocal{UNIFOR-MG -- Formiga}
+\Jdatadeposito{}
+\Jcomentario{Monografia apresentada ao Instituto Superior de
+Educação do UNIFOR/MG, como requisito parcial para obtenção do
+título de bacharel em Ciência da Computação, sob a
+orientação do Prof. Me. Valter Ribeiro Lima Júnior.}
+
+\pagestyle{empty}
+\pagestyle{plain}%
+\Jcapa
+\Jfolhaderosto
+\include{dedicatoria}
+\include{agradecimentos}
+\include{epigrafe}
+
+\pagenumbering{roman}
+\tableofcontents %
+\cleardoublepage\phantomsection
+\addcontentsline{toc}{chapter}{Lista de Figuras}
+\listoffigures %
+\cleardoublepage\phantomsection
+\addcontentsline{toc}{chapter}{Lista de Tabelas}
+\listoftables %
+\include{siglas}
+\include{resumo}
+\include{abstract}
+\pagenumbering{arabic}
+\include{cap1-introducao}
+\include{cap2-referencial}
+\include{cap3-estado-da-arte}
+\include{cap4-metodologia}
+\include{cap5-desenvolvimento}
+\include{cap6-resultados}
+\include{cap7-conclusoes}
+
+\bibliographystyle{abntex2-alf}
+\bibliography{biblio}
+
+\end{document}

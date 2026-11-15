@@ -1,0 +1,441 @@
+\chapter{Metodologia}
+\label{cap:metodologia}
+
+\section{Considerações Iniciais}
+
+Este capítulo descreve a metodologia adotada para comparar as arquiteturas monolítica e de
+microsserviços. São apresentados a classificação da pesquisa, as etapas do trabalho, os
+requisitos implementados nas duas versões da aplicação, as tecnologias utilizadas, a forma como
+foi garantida a equivalência funcional entre as versões, o ambiente de testes, os cenários e
+perfis de carga, as métricas associadas a cada critério de comparação, o procedimento de
+execução e análise dos dados e, por fim, as ameaças à validade dos resultados.
+
+\section{Classificação da Pesquisa}
+
+Quanto à natureza, esta pesquisa é aplicada, pois busca gerar conhecimento para a solução de um
+problema prático: a escolha da arquitetura de software mais adequada para um sistema. Quanto à
+abordagem, é quali-quantitativa, já que combina medições numéricas de desempenho, de uso de
+recursos e de código-fonte com a análise qualitativa do esforço de desenvolvimento e de
+implantação. Quanto aos objetivos, classifica-se como exploratória e descritiva: exploratória
+por proporcionar maior familiaridade com o problema por meio do levantamento bibliográfico e do
+estado da arte, e descritiva por registrar e comparar as características de cada arquitetura
+\cite{gil2017}.
+
+Quanto aos procedimentos técnicos, a pesquisa é bibliográfica, na construção do referencial
+teórico e do estado da arte, e experimental, na comparação entre as arquiteturas
+\cite{gil2017}. A parte experimental segue os princípios de um experimento controlado em
+engenharia de software, conforme \citeonline{wohlin2012}: a arquitetura é o fator estudado, com
+dois tratamentos (monolítica e de microsserviços), enquanto as demais variáveis, como
+funcionalidades, linguagem, \textit{framework}, banco de dados, máquina, recursos disponíveis e
+carga aplicada, são mantidas constantes. As variáveis dependentes são as métricas descritas na
+Seção~\ref{sec:metricas}.
+
+\section{Etapas do Trabalho}
+
+O trabalho foi organizado nas seguintes etapas:
+
+\begin{enumerate}
+    \item \textbf{Revisão bibliográfica:} estudo dos conceitos de arquitetura de software, das
+    arquiteturas monolítica e de microsserviços, das formas de comunicação entre componentes e
+    dos atributos de qualidade, apresentados no Capítulo~\ref{cap:referencial};
+    \item \textbf{Levantamento do estado da arte:} análise dos trabalhos que compararam as duas
+    arquiteturas, apresentada no Capítulo~\ref{cap:estado-arte}, que orientou a escolha dos
+    critérios e das métricas;
+    \item \textbf{Definição dos requisitos:} especificação das funcionalidades comuns às duas
+    versões da aplicação de \textit{e-commerce};
+    \item \textbf{Desenvolvimento da versão em microsserviços:} implementação dos serviços, do
+    \textit{API Gateway} e da comunicação síncrona e assíncrona entre eles;
+    \item \textbf{Desenvolvimento da versão monolítica:} implementação das mesmas regras de
+    negócio em uma única aplicação, organizada em módulos;
+    \item \textbf{Verificação da equivalência funcional:} execução de testes automatizados que
+    confirmam que as duas versões oferecem as mesmas rotas e produzem as mesmas respostas;
+    \item \textbf{Preparação do ambiente de testes:} conteinerização das aplicações, definição
+    dos limites de recursos, simulação do serviço de pagamento e criação dos cenários de carga;
+    \item \textbf{Execução dos experimentos e coleta das métricas:} realização dos testes de
+    carga, de estresse e de escalabilidade e coleta das métricas de código e de implantação;
+    \item \textbf{Análise e discussão dos resultados:} tratamento estatístico dos dados,
+    comparação entre as arquiteturas e confronto com os trabalhos do estado da arte.
+\end{enumerate}
+
+\section{Requisitos das Aplicações}
+
+As duas versões implementam o mesmo conjunto de requisitos funcionais, apresentado na
+Tabela~\ref{tab:requisitos}. Os requisitos foram definidos de modo a reproduzir as operações
+típicas de uma loja virtual e a exercitar tanto a comunicação síncrona quanto a assíncrona,
+além da integração com serviços externos de pagamento e de armazenamento de arquivos.
+
+\begin{table}[htbp]
+\centering
+\caption{Requisitos funcionais das aplicações}
+\label{tab:requisitos}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.5cm}|>{\raggedright\arraybackslash}p{13.1cm}|}
+\hline
+\textbf{Código} & \textbf{Descrição} \\ \hline
+RF01 & Cadastrar usuários e autenticá-los por meio de \textit{token} JWT, com os perfis de cliente e de administrador \\ \hline
+RF02 & Criar automaticamente o participante, com os dados pessoais do cliente, a partir do cadastro do usuário \\ \hline
+RF03 & Consultar participantes, sendo a listagem completa restrita ao administrador \\ \hline
+RF04 & Cadastrar, alterar e excluir produtos, com imagem, variações de tamanho e cor e controle de estoque (administrador) \\ \hline
+RF05 & Consultar o catálogo de produtos sem necessidade de autenticação: todos, apenas os com estoque, por identificador e por lista de identificadores \\ \hline
+RF06 & Personalizar a loja, com cores e logotipo (administrador), e consultar essa configuração publicamente \\ \hline
+RF07 & Configurar o \textit{token} de acesso ao Mercado Pago da loja (administrador) \\ \hline
+RF08 & Realizar pedidos, validando o cliente, a existência dos produtos e variações e o estoque disponível \\ \hline
+RF09 & Processar o pagamento do pedido por PIX, cartão de crédito ou cartão de débito por meio do Mercado Pago \\ \hline
+RF10 & Receber as notificações do Mercado Pago, atualizar o status do pagamento do pedido e baixar o estoque quando o pagamento for aprovado \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+Além dos requisitos funcionais, foram definidos requisitos não funcionais comuns às duas
+versões. O principal deles é que ambas exponham exatamente as mesmas rotas, com os mesmos
+formatos de requisição e de resposta em JSON e os mesmos códigos de \textit{status} HTTP, de
+modo que um mesmo cliente, ou um mesmo \textit{script} de teste, possa ser utilizado com
+qualquer uma delas. Também foram definidos a autenticação sem estado por JWT, o armazenamento
+das imagens em um serviço de objetos compatível com o protocolo S3 e a execução de todos os
+componentes em contêineres Docker. As diferenças entre as versões ficam restritas à
+organização interna: na versão de microsserviços, cada serviço possui seu próprio banco de
+dados e se comunica com os demais por HTTP ou por mensagens; na versão monolítica, há um único
+banco de dados e os módulos se comunicam por chamadas diretas e eventos internos. Essas
+diferenças são detalhadas no Capítulo~\ref{cap:desenvolvimento}.
+
+\section{Tecnologias Utilizadas}
+
+As duas versões foram desenvolvidas com a mesma pilha tecnológica, de modo que as diferenças
+observadas possam ser atribuídas à arquitetura e não às ferramentas. A
+Tabela~\ref{tab:tecnologias} apresenta as tecnologias utilizadas e em qual versão cada uma é
+empregada.
+
+\begin{table}[htbp]
+\centering
+\caption{Tecnologias utilizadas no desenvolvimento e nos testes}
+\label{tab:tecnologias}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{4.4cm}|>{\raggedright\arraybackslash}p{7.4cm}|>{\raggedright\arraybackslash}p{2.8cm}|}
+\hline
+\textbf{Tecnologia} & \textbf{Finalidade} & \textbf{Versão em que é usada} \\ \hline
+Java 21 & Linguagem de programação & Ambas \\ \hline
+Spring Boot 3.5.13 &\textit{Framework} das aplicações (Web, segurança, acesso a dados) & Ambas \\ \hline
+Spring Security e JWT & Autenticação e autorização sem estado & Ambas \\ \hline
+Spring Data JPA e Hibernate & Persistência de dados & Ambas \\ \hline
+PostgreSQL 17.4 & Banco de dados relacional & Ambas \\ \hline
+MinIO & Armazenamento das imagens (compatível com S3) & Ambas \\ \hline
+SDK Java do Mercado Pago 2.8.0 & Integração com o serviço de pagamentos & Ambas \\ \hline
+MapStruct e Lombok & Conversão entre objetos e redução de código repetitivo & Ambas \\ \hline
+JUnit e Mockito & Testes automatizados & Ambas \\ \hline
+Spring Cloud Gateway & Ponto único de entrada (\textit{API Gateway}) & Microsserviços \\ \hline
+Spring Cloud OpenFeign & Comunicação síncrona entre serviços (HTTP) & Microsserviços \\ \hline
+Apache Kafka (Confluent 7.7.7) & Comunicação assíncrona entre serviços & Microsserviços \\ \hline
+Spring Application Events & Comunicação entre módulos por eventos internos & Monolítica \\ \hline
+Docker e Docker Compose & Conteinerização e orquestração do ambiente & Ambas \\ \hline
+Grafana k6 0.54 & Geração de carga e medição de desempenho \cite{grafana-k6} & Testes \\ \hline
+WireMock 3.9 & Simulação da API do Mercado Pago \cite{wiremock} & Testes \\ \hline
+Nginx 1.27 & Balanceador de carga nos testes de escalabilidade horizontal & Testes \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+\section{Verificação da Equivalência Funcional}
+
+Para que a comparação seja válida, as duas versões precisam se comportar da mesma forma para
+quem as utiliza. Por isso, além dos testes unitários de cada versão, foram criados
+\textit{scripts} de teste funcional que acessam a aplicação somente pela sua interface
+externa, por meio de requisições HTTP, e que são executados sem alteração contra as duas
+versões. Esses \textit{scripts} verificam cada rota da aplicação, incluindo os casos de erro,
+como requisições sem autenticação, dados inválidos, estoque insuficiente e falhas na
+comunicação com o Mercado Pago, além de cenários completos de uso, como o cadastro de um
+cliente seguido da realização de um pedido. Para cada verificação, são comparados o código de
+\textit{status} e o corpo da resposta.
+
+O fluxo assíncrono de pagamento também é verificado: após a notificação de pagamento aprovado,
+confere-se se o status do pedido foi atualizado e se o estoque dos produtos foi baixado. Sempre
+que uma regra de negócio é alterada, a alteração é aplicada nas duas versões e os testes são
+executados novamente. Os resultados dessa verificação são apresentados no
+Capítulo~\ref{cap:desenvolvimento}.
+
+\section{Ambiente de Testes}
+
+Os experimentos são executados em um único computador, cuja configuração é apresentada na
+Tabela~\ref{tab:maquina}. Todos os componentes, inclusive o gerador de carga, são executados
+em contêineres Docker conectados à mesma rede virtual, o que torna o ambiente reproduzível: o
+mesmo conjunto de arquivos de configuração e de \textit{scripts} cria o ambiente do zero, com
+os bancos de dados vazios, a cada execução.
+
+\begin{table}[htbp]
+\centering
+\caption{Configuração da máquina utilizada nos experimentos}
+\label{tab:maquina}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{4.4cm}|>{\raggedright\arraybackslash}p{10.2cm}|}
+\hline
+\textbf{Componente} & \textbf{Especificação} \\ \hline
+Processador & AMD Ryzen 5 4600G, 6 núcleos e 12 \textit{threads} \\ \hline
+Memória & 32 GB \\ \hline
+Armazenamento & SSD SATA de 960 GB \\ \hline
+Sistema operacional & Windows 11 Pro \\ \hline
+Contêineres & Docker Desktop 29.9 sobre WSL 2, com 12 CPUs e 15 GB de memória disponíveis \\ \hline
+Máquina virtual Java & Eclipse Temurin 21 (JRE), igual em todas as imagens \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+A Figura~\ref{fig:ambiente-testes} ilustra a organização do ambiente. O gerador de carga envia
+as requisições diretamente ao ponto de entrada da aplicação sob teste, que é o próprio monólito
+ou o \textit{API Gateway} dos microsserviços. A aplicação utiliza o PostgreSQL, o MinIO e,
+apenas na versão de microsserviços, o Kafka. Durante a medição, um coletor registra
+periodicamente o consumo de CPU e de memória de cada contêiner. As duas arquiteturas nunca são
+executadas ao mesmo tempo, e os ambientes de desenvolvimento e demais programas da máquina
+permanecem encerrados durante os experimentos.
+
+\begin{figure}[htbp]
+\centering
+\caption{Organização do ambiente de testes}
+\label{fig:ambiente-testes}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    caixa/.style={draw, rounded corners=2pt, minimum width=3.4cm, minimum height=1.0cm, fill=gray!10, font=\small, align=center},
+    bd/.style={draw, cylinder, shape border rotate=90, aspect=0.25, minimum width=2.2cm, minimum height=1.1cm, fill=gray!25, font=\small},
+    seta/.style={-{Stealth[length=2.2mm]}, thick}
+]
+\node[caixa, fill=white] (k6) at (0,0) {Gerador de carga\\(k6)};
+\node[caixa, fill=gray!30, minimum width=6.4cm, minimum height=1.8cm] (app) at (6.2,0) {Aplicação sob teste\\monólito \textit{ou}\\\textit{API Gateway} e microsserviços};
+\node[caixa] (mp) at (13.2,0) {Simulador do\\Mercado Pago (WireMock)};
+\node[bd, minimum width=2.4cm] (pg) at (3.6,-3.0) {PostgreSQL};
+\node[caixa, minimum width=2.2cm] (minio) at (6.2,-3.0) {MinIO};
+\node[caixa] (kafka) at (9.4,-3.0) {Kafka e Zookeeper\\(só microsserviços)};
+\node[caixa, fill=white] (coletor) at (0,-3.0) {Coletor de recursos\\(\textit{docker stats})};
+\draw[seta] (k6) -- node[above, font=\footnotesize] {HTTP} (app);
+\draw[seta] (app) -- node[above, font=\footnotesize] {HTTPS} (mp);
+\draw[seta] (app.south -| pg) -- (pg.north);
+\draw[seta] (app.south -| minio) -- (minio.north);
+\draw[seta, dashed] (app.south -| {(8.6,0)}) -- ({(8.6,0)} |- kafka.north);
+\draw[seta, dotted] (coletor.north) |- ([yshift=0.3cm]app.south west);
+\node[draw, thick, dashed, rounded corners=4pt, inner sep=10pt, fit=(k6)(mp)(coletor)(kafka), label={[font=\footnotesize]below:Rede virtual do Docker em uma única máquina}] {};
+\end{tikzpicture}%
+}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{figure}
+
+\subsection{Limites de Recursos}
+
+Para que a comparação seja justa, a camada de aplicação recebe o mesmo orçamento de recursos
+nas duas arquiteturas: 4 CPUs e 4 GB de memória no total. No monólito, todo esse orçamento é
+atribuído ao único contêiner da aplicação; nos microsserviços, ele é dividido entre os sete
+contêineres, proporcionalmente à participação esperada de cada serviço nas operações. Os
+componentes de infraestrutura recebem os mesmos limites nas duas arquiteturas, e o Kafka e o
+Zookeeper, existentes apenas na versão de microsserviços, recebem limites próprios. A
+Tabela~\ref{tab:limites} apresenta os limites utilizados. Todas as aplicações são executadas
+com a mesma imagem base e com a mesma configuração da máquina virtual Java, que limita o
+tamanho do \textit{heap} a 60\% da memória do contêiner, e o registro dos comandos SQL
+executados é desativado nas duas versões.
+
+\begin{table}[htbp]
+\centering
+\caption{Limites de recursos dos contêineres}
+\label{tab:limites}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{5.6cm}|>{\centering\arraybackslash}p{1.6cm}|>{\centering\arraybackslash}p{2.8cm}|>{\raggedright\arraybackslash}p{3.4cm}|}
+\hline
+\textbf{Contêiner} & \textbf{CPUs} & \textbf{Memória} & \textbf{Arquitetura} \\ \hline
+Monólito & 4,00 & 4.096 MB & Monolítica \\ \hline
+\textit{API Gateway} & 0,75 & 640 MB & Microsserviços \\ \hline
+Auth & 0,50 & 512 MB & Microsserviços \\ \hline
+Participante & 0,50 & 512 MB & Microsserviços \\ \hline
+Produto & 0,75 & 640 MB & Microsserviços \\ \hline
+Loja & 0,50 & 512 MB & Microsserviços \\ \hline
+Pedido & 0,50 & 640 MB & Microsserviços \\ \hline
+Pagamento & 0,50 & 512 MB & Microsserviços \\ \hline
+\textbf{Total da aplicação} & \textbf{4,00} & \textbf{$\approx$ 4.000 MB} & \textbf{Ambas} \\ \hline
+PostgreSQL & 2,00 & 1.024 MB & Ambas \\ \hline
+MinIO & 0,50 & 512 MB & Ambas \\ \hline
+Simulador do Mercado Pago & 1,00 & 512 MB & Ambas \\ \hline
+Kafka & 1,00 & 1.024 MB & Microsserviços \\ \hline
+Zookeeper & 0,50 & 512 MB & Microsserviços \\ \hline
+Gerador de carga (k6) & 2,00 & 1.024 MB & Ambas \\ \hline
+Balanceador (Nginx)\textsuperscript{*} & 1,00 & 256 MB & Ambas \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize \textsuperscript{*}Utilizado apenas nos testes de escalabilidade horizontal.\\Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+\subsection{Simulação do Serviço de Pagamento}
+
+O processamento de pagamentos depende da API do Mercado Pago, um serviço externo cujo tempo de
+resposta varia com fatores alheios ao experimento, como a conexão com a Internet e a carga do
+próprio serviço, e cujo uso intensivo durante os testes não seria adequado. Por isso, a API foi
+substituída por um simulador construído com o WireMock \cite{wiremock}, que atende pelo mesmo
+endereço da API real dentro da rede do Docker, utilizando um certificado digital criado
+especificamente para os testes. Dessa forma, o código de pagamento das aplicações permanece
+inalterado. O simulador responde a todas as chamadas com um atraso fixo de 100~ms,
+representando o tempo de uma chamada a um serviço externo, cria os pagamentos por PIX como
+pendentes e os pagamentos por cartão como aprovados e informa, nas consultas, que o pagamento
+foi aprovado. Como o atraso é o mesmo nas duas arquiteturas, ele não favorece nenhuma delas.
+
+\subsection{Massa de Dados}
+
+Antes de cada execução, os bancos de dados são recriados e populados, por meio da própria
+interface da aplicação, com a mesma massa de dados: um administrador, cem clientes, vinte
+produtos com estoque suficiente para não se esgotar durante os testes, sendo quatro deles com
+três variações cada, e a configuração do Mercado Pago da loja. Assim, as duas arquiteturas
+partem sempre do mesmo estado inicial.
+
+\section{Cenários e Perfis de Carga}
+
+Os testes de desempenho são realizados com o Grafana k6, ferramenta de código aberto para
+testes de carga em que os cenários são escritos em JavaScript e que registra o tempo de cada
+requisição \cite{grafana-k6}. Foram definidos três cenários, apresentados na
+Tabela~\ref{tab:cenarios}. No cenário de compra, cada pedido percorre os módulos de pedido,
+produto, participante, pagamento, loja e autenticação, além do simulador do Mercado Pago, e a
+notificação de pagamento desencadeia a atualização do pedido e a baixa do estoque, que nos
+microsserviços ocorre de forma assíncrona por meio do Kafka.
+
+\begin{table}[htbp]
+\centering
+\caption{Cenários de teste}
+\label{tab:cenarios}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.4cm}|>{\raggedright\arraybackslash}p{12.2cm}|}
+\hline
+\textbf{Cenário} & \textbf{Operações realizadas em cada iteração} \\ \hline
+Catálogo & Lista os produtos com estoque, consulta um produto escolhido aleatoriamente e consulta a configuração da loja, sem autenticação \\ \hline
+Compra & Um cliente autenticado realiza um pedido com dois produtos escolhidos aleatoriamente, pago por PIX, e em seguida é enviada a notificação de pagamento aprovado \\ \hline
+Misto & Executa os dois cenários anteriores em paralelo, na proporção de 80\% de iterações de catálogo para 20\% de compra, aproximando o comportamento de uma loja virtual, em que a maior parte dos acessos é de navegação \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+Os cenários são executados segundo três perfis de carga. No teste de fumaça, um único usuário
+virtual executa poucas iterações, apenas para confirmar que o ambiente está funcionando. No
+teste de carga, o k6 inicia novas iterações a uma taxa constante durante três minutos,
+independentemente do tempo de resposta da aplicação; esse modelo, chamado de aberto, evita que
+uma aplicação mais lenta receba menos requisições e mascare a sua lentidão. As taxas
+utilizadas são as mesmas para as duas arquiteturas e são definidas a partir de um teste
+preliminar, de modo a representar cargas baixa, média e alta. No teste de estresse, a taxa é
+aumentada em oito degraus de um minuto até um valor máximo, com o objetivo de encontrar o ponto
+de saturação de cada arquitetura.
+
+A máquina virtual Java compila e otimiza o código durante a execução, de modo que as primeiras
+requisições são mais lentas do que as seguintes. Por isso, antes de cada medição, é executado
+um aquecimento de um minuto com metade da taxa do teste, cujos resultados são descartados.
+
+\section{Métricas e Critérios de Comparação}
+\label{sec:metricas}
+
+Os cinco atributos de qualidade descritos no Capítulo~\ref{cap:referencial} são utilizados
+como critérios de comparação. A Tabela~\ref{tab:metricas} relaciona cada critério às métricas
+utilizadas e aos instrumentos de coleta.
+
+\begin{table}[htbp]
+\centering
+\caption{Critérios de comparação, métricas e instrumentos de coleta}
+\label{tab:metricas}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.1cm}|>{\raggedright\arraybackslash}p{7.5cm}|>{\raggedright\arraybackslash}p{4.0cm}|}
+\hline
+\textbf{Critério} & \textbf{Métricas} & \textbf{Instrumento} \\ \hline
+Desempenho & Tempo de resposta (média, mediana e percentis 90, 95 e 99), vazão e taxa de erros, por cenário e por rota; uso de CPU e de memória sob carga & k6 e \textit{docker stats} \\ \hline
+Escalabilidade & Vazão máxima sustentada; variação da vazão e do tempo de resposta com o aumento dos recursos e do número de instâncias; eficiência da escala & k6 e \textit{docker stats} \\ \hline
+Manutenibilidade & Linhas de código, número de classes, complexidade ciclomática, acoplamento entre objetos (CBO) e falta de coesão em métodos (LCOM); impacto de alterações & Ferramenta CK \cite{aniche-ck} e análise dos repositórios \\ \hline
+Complexidade de desenvolvimento & Número de projetos, de arquivos de configuração e de dependências; quantidade de código dedicada à comunicação entre componentes; tempo de compilação & Análise dos repositórios \\ \hline
+Implantação & Número de imagens e contêineres; tamanho das imagens; tempo de construção e de inicialização; consumo de recursos em repouso & Docker e \textit{scripts} do ambiente \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+No critério de desempenho, o tempo de resposta é analisado principalmente por meio dos
+percentis, que revelam o comportamento das requisições mais lentas, ocultado pela média
+\cite{jain1991}. Os resultados são registrados por rota e por cenário, permitindo identificar
+quais operações são mais afetadas pela comunicação entre serviços.
+
+Na escalabilidade, considera-se como vazão máxima sustentada a maior taxa, obtida no teste de
+estresse, em que a taxa de erros permanece abaixo de 1\% e o percentil 95 do tempo de resposta
+permanece abaixo de um segundo. A escalabilidade vertical é avaliada repetindo o teste de
+estresse com orçamentos de 2, 4 e 8 CPUs para a camada de aplicação, mantendo a memória em
+4 GB, já que reduzi-la na mesma proporção deixaria cada serviço abaixo da memória mínima
+necessária para executar uma aplicação Spring Boot. A escalabilidade horizontal é avaliada
+acrescentando instâncias atrás de um balanceador de carga Nginx, utilizado da mesma forma nas
+duas arquiteturas: no monólito, a aplicação inteira é replicada, correspondendo ao eixo X do
+cubo de escalabilidade; nos microsserviços, são replicados apenas os serviços mais demandados,
+correspondendo à combinação dos eixos X e Y \cite{abbott2015}. Como o balanceador acrescenta
+um intermediário às requisições, a referência para essa comparação é a execução com uma única
+instância de cada componente atrás do mesmo balanceador. A eficiência da escala é calculada
+pela razão entre o ganho de vazão e o aumento de recursos.
+
+Na manutenibilidade, as métricas de código são extraídas com a ferramenta CK
+\cite{aniche-ck}, que calcula as métricas propostas por \citeonline{chidamber1994} e a
+complexidade ciclomática de \citeonline{mccabe1976} para código Java. Como complemento, é
+analisado o impacto de duas alterações hipotéticas nas duas versões, a inclusão de um novo
+atributo no produto que precise ser exibido no pedido e a inclusão de um novo meio de
+pagamento, contando quantos arquivos, módulos ou serviços e implantações seriam afetados.
+
+A complexidade de desenvolvimento e a implantação são avaliadas a partir dos repositórios e do
+próprio ambiente de testes, contabilizando os artefatos necessários para construir e executar
+cada versão. O tempo de inicialização é medido desde o comando que sobe o ambiente até que
+todas as aplicações estejam prontas para receber requisições, e o consumo de recursos em
+repouso é medido com as aplicações no ar e sem carga.
+
+\section{Procedimento de Execução e Análise dos Dados}
+
+Cada combinação de arquitetura, cenário e perfil de carga é executada cinco vezes. A ordem das
+execuções é alternada entre as arquiteturas, de modo que eventuais variações da máquina ao
+longo do tempo afetem as duas igualmente. Cada execução segue os passos abaixo, automatizados
+por \textit{scripts}:
+
+\begin{enumerate}
+    \item recriação do ambiente, com os bancos de dados vazios, e registro do tempo de
+    inicialização;
+    \item cadastro da massa de dados;
+    \item aquecimento da máquina virtual Java, sem registro dos resultados;
+    \item execução do cenário, com coleta simultânea das métricas do k6 e do uso de CPU e de
+    memória dos contêineres;
+    \item registro dos resultados, dos \textit{logs} das aplicações e das informações do
+    ambiente, como as versões do código e os limites de recursos utilizados;
+    \item remoção do ambiente.
+\end{enumerate}
+
+Para cada métrica, são calculados a média, o desvio padrão e o coeficiente de variação das
+cinco repetições, além do intervalo de confiança de 95\%, conforme recomendado por
+\citeonline{jain1991} para a comparação de sistemas. As arquiteturas são comparadas pela
+diferença percentual entre as médias, e uma diferença é considerada significativa apenas
+quando os intervalos de confiança das duas arquiteturas não se sobrepõem. Os resultados são
+apresentados em tabelas e gráficos no Capítulo~\ref{cap:resultados}.
+
+\section{Ameaças à Validade}
+
+\citeonline{wohlin2012} recomendam que os experimentos em engenharia de software discutam os
+fatores que podem comprometer a validade de seus resultados. Neste trabalho, foram
+identificadas as seguintes ameaças:
+
+\begin{itemize}
+    \item \textbf{Execução em uma única máquina:} a comunicação entre os contêineres ocorre em
+    uma rede virtual local, com latência muito menor que a de uma rede física entre
+    servidores. Assim, o custo da comunicação entre os microsserviços tende a ser
+    subestimado em relação a um ambiente distribuído real;
+    \item \textbf{Virtualização:} o Docker Desktop executa os contêineres em uma máquina
+    virtual sobre o Windows, o que acrescenta uma camada que não existiria em um servidor
+    Linux. Como essa camada é a mesma para as duas arquiteturas, o efeito sobre a comparação
+    tende a ser reduzido;
+    \item \textbf{Simulação do pagamento:} o atraso fixo do simulador não reproduz a
+    variabilidade do serviço real do Mercado Pago;
+    \item \textbf{Divisão dos recursos:} a forma como o orçamento é dividido entre os
+    microsserviços influencia o desempenho dessa arquitetura. Por isso, a divisão é
+    registrada junto com os resultados e avaliada nos testes de escalabilidade;
+    \item \textbf{Autoria das implementações:} as duas versões foram desenvolvidas pelo mesmo
+    autor, o que pode favorecer, ainda que involuntariamente, uma delas. Essa ameaça é
+    reduzida pelo compartilhamento das regras de negócio e pela verificação automatizada da
+    equivalência funcional;
+    \item \textbf{Generalização:} os resultados se referem a uma aplicação de porte pequeno a
+    médio, com uma equipe de desenvolvimento de uma pessoa, e não podem ser generalizados
+    diretamente para sistemas maiores ou para organizações com várias equipes.
+\end{itemize}
+
+\section{Considerações Finais}
+
+Este capítulo apresentou a metodologia da pesquisa, classificada como aplicada,
+quali-quantitativa e experimental. As duas versões da aplicação implementam os mesmos
+requisitos com as mesmas tecnologias, e a sua equivalência funcional é verificada por testes
+automatizados. A comparação é realizada em um ambiente conteinerizado e reproduzível, com o
+mesmo orçamento de recursos para as duas arquiteturas, com a simulação do serviço de pagamento
+e com cenários de carga que representam a navegação e a compra em uma loja virtual. Os
+critérios de desempenho, escalabilidade, manutenibilidade, complexidade de desenvolvimento e
+implantação são avaliados por meio de métricas objetivas, analisadas estatisticamente a partir
+de cinco repetições de cada teste. O próximo capítulo descreve o desenvolvimento das duas
+versões da aplicação.

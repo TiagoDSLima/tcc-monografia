@@ -1,0 +1,198 @@
+\chapter{Estado da Arte}
+\label{cap:estado-arte}
+
+\section{Considerações Iniciais}
+
+Este capítulo apresenta o estado da arte sobre a comparação entre as arquiteturas monolítica e
+de microsserviços. Foram selecionados trabalhos que compararam as duas abordagens de forma
+experimental ou analítica, incluindo artigos publicados em eventos e periódicos internacionais
+e trabalhos de conclusão de curso desenvolvidos em instituições brasileiras. Os trabalhos são
+apresentados em ordem cronológica, cada um em uma seção, destacando o objetivo, a aplicação
+utilizada, os aspectos avaliados e os principais resultados. Ao final, a
+Seção~\ref{sec:analise-estado-arte} compara esses trabalhos entre si e com a proposta desta
+monografia.
+
+\section{Villamizar et al. (2015)}
+
+\citeonline{villamizar2015}, da Universidad de los Andes, na Colômbia, partiram da observação
+de que grandes empresas da Internet, como Amazon, Netflix e LinkedIn, passaram a utilizar
+microsserviços para implantar aplicações de grande porte na nuvem como um conjunto de pequenos
+serviços, que podem ser desenvolvidos, testados, implantados, escalados e atualizados de forma
+independente. O objetivo dos autores foi avaliar se esse padrão é uma boa alternativa para a
+implantação de aplicações Web em nuvem.
+
+Para isso, os autores apresentaram um estudo de caso no qual uma mesma aplicação corporativa
+foi desenvolvida e implantada em nuvem de duas formas, uma monolítica e outra em
+microsserviços, ambas com o \textit{framework} Play. Foram executados testes de desempenho nas
+duas versões, e o trabalho discute os benefícios e os desafios que empresas já estabelecidas
+podem enfrentar ao adotar microsserviços.
+
+Em trabalho posterior, o mesmo grupo comparou o custo de infraestrutura da aplicação em três
+cenários com as mesmas condições de escala: monolítica, em microsserviços operados pelo próprio
+cliente e em microsserviços operados pelo provedor de nuvem. Os resultados mostraram que os
+microsserviços podem reduzir o custo de infraestrutura em relação ao monólito e que o uso de
+serviços de nuvem projetados especificamente para implantar e escalar microsserviços reduziu
+os custos em 70\% ou mais \cite{villamizar2016}. Esses trabalhos mostram que a comparação entre
+as arquiteturas não se limita ao desempenho, envolvendo também o custo e a forma de
+implantação.
+
+\section{Al-Debagy e Martinek (2018)}
+
+\citeonline{aldebagy2018}, da Universidade de Tecnologia e Economia de Budapeste, motivaram seu
+estudo pelas contradições encontradas na literatura: enquanto alguns trabalhos relatavam maior
+vazão para os microsserviços, outros apontavam desempenho superior do monólito em diversas
+configurações. Para investigar essas diferenças, os autores utilizaram a plataforma JHipster
+para gerar aplicações com Spring Boot e AngularJS nas duas arquiteturas. A versão em
+microsserviços era composta por três serviços, um registro de serviços e um
+\textit{gateway}, e todas as aplicações foram executadas em contêineres Docker, em um servidor
+com 16~GB de memória, enquanto a ferramenta Apache JMeter gerava a carga a partir de um cliente
+remoto.
+
+Foram definidos três cenários de teste, avaliados pela vazão e pelo tempo de resposta. No teste
+de carga, o número de usuários simultâneos foi aumentado gradualmente de 100 até 7.000: as duas
+arquiteturas tiveram desempenho semelhante, com diferença média de 0,87\%, embora o monólito
+tenha se saído melhor com poucos usuários. No teste de concorrência, em que todos os serviços
+eram acionados ao mesmo tempo com 100 a 1.000 requisições cada, o monólito apresentou vazão
+cerca de 6\% superior, sem diferença significativa no tempo de resposta. No terceiro cenário,
+com 10.000 usuários simultâneos, os autores compararam duas tecnologias de descoberta de
+serviços na versão em microsserviços: a configuração com Consul obteve vazão cerca de 3,8\%
+maior e tempo de resposta ligeiramente menor do que a configuração com Eureka.
+
+Os autores concluíram que as duas arquiteturas têm desempenho semelhante sob carga normal e
+recomendaram o monólito para aplicações pequenas, utilizadas por poucos usuários. O trabalho
+também evidencia que as escolhas de infraestrutura da arquitetura distribuída, como a
+ferramenta de descoberta de serviços, influenciam o resultado da comparação.
+
+\section{Mendes (2021)}
+
+\citeonline{mendes2021}, em trabalho de conclusão do curso de Engenharia de Software da
+Universidade de Brasília, partiu do contexto de empresas que migram seus sistemas para
+microsserviços em busca dos benefícios dessa arquitetura, mas que, quando o fazem sem
+planejamento adequado e em desacordo com os objetivos de negócio, podem levar o novo modelo
+arquitetural ao fracasso.
+
+O trabalho consistiu em uma pesquisa exploratória sobre os estilos monolítico e de
+microsserviços, a partir da qual foi construído um mapa mental com os fatores que afetam cada
+modelo arquitetural. Esses fatores foram então analisados em quatro estudos de caso de
+empresas que migraram de um modelo arquitetural para o outro.
+
+A autora concluiu que a arquitetura monolítica é indicada para a fase de descoberta do domínio,
+mas tende a perder manutenibilidade e evolucionabilidade à medida que a base de código cresce,
+enquanto a arquitetura de microsserviços tende a ser mais sustentável, porém apresenta custo
+elevado e exige domínio sobre o problema e as tecnologias envolvidas. Trata-se de uma análise
+qualitativa, sem a implementação e a medição de aplicações.
+
+\section{Blinowski, Ojdowska e Przybyłek (2022)}
+
+\citeonline{blinowski2022} observaram que empresas menores costumam esperar, ao migrar para
+microsserviços, os mesmos ganhos obtidos por grandes empresas, o que pode não se confirmar,
+especialmente em sistemas sem altíssima concorrência que podem ser escalados verticalmente.
+Como as evidências sobre o tema eram escassas e inconsistentes, os autores se propuseram a
+comparar o desempenho e a escalabilidade das duas arquiteturas por meio de uma aplicação Web de
+referência.
+
+A aplicação foi implementada em quatro versões, combinando dois estilos arquiteturais
+(monolítico e de microsserviços) e duas tecnologias (Java e C\#.NET). Foram realizados
+experimentos controlados em três ambientes de implantação: uma máquina local e os serviços
+Azure Spring Cloud e Azure App Service, da plataforma de nuvem Microsoft Azure.
+
+Os resultados indicaram que: em uma única máquina, o monólito teve desempenho superior à
+versão em microsserviços; a tecnologia Java aproveitou melhor máquinas mais potentes em
+serviços com processamento intensivo, enquanto C\#.NET se saiu melhor em serviços leves
+executados em máquinas de baixa capacidade; a escalabilidade vertical foi mais vantajosa em
+custo do que a horizontal na nuvem Azure; acrescentar instâncias além de certo ponto passou a
+degradar o desempenho; e a tecnologia de implementação não teve impacto perceptível na
+escalabilidade. O trabalho reforça que o ambiente de execução e a estratégia de escala
+influenciam diretamente a comparação entre as arquiteturas.
+
+\section{Santos Junior (2024)}
+
+\citeonline{santosjunior2024}, em trabalho de especialização em Engenharia de Software da
+Pontifícia Universidade Católica de São Paulo, relatou a experiência de um projeto integrador
+voltado à migração de uma aplicação de \textit{e-commerce} monolítica para microsserviços.
+
+A parte teórica do trabalho compara as arquiteturas monolítica e de microsserviços e discute os
+desafios da migração entre elas. A parte prática descreve a arquitetura adotada para atender às
+regras de negócio do \textit{e-commerce}, incluindo uma camada de \textit{gateway}, com o
+objetivo de obter maior escalabilidade, resiliência e manutenibilidade. O código-fonte do
+projeto foi disponibilizado publicamente.
+
+O trabalho se aproxima desta monografia por tratar do mesmo domínio de aplicação, mas tem
+caráter de relato de experiência: a proposta de migração não é acompanhada de uma comparação
+quantitativa entre as duas versões.
+
+\section{Vale (2025)}
+
+\citeonline{vale2025}, em trabalho de conclusão do curso de Engenharia de Computação da
+Universidade Federal do Ceará, investigou o debate entre as arquiteturas monolítica e de
+microsserviços buscando passar da análise teórica para a validação empírica. Para isso,
+construiu dois protótipos funcionalmente idênticos de um sistema de cadastro, um monolítico e
+outro em microsserviços, desenvolvidos em JavaScript com Node.js e Express e executados em
+contêineres Docker.
+
+Os protótipos foram comparados quanto ao tempo de resposta, ao consumo de processador e de
+memória e à complexidade de implantação. O monólito apresentou menor latência e infraestrutura
+mais simples, enquanto a versão em microsserviços registrou latência cerca de 147\% maior em
+uma operação que envolvia vários serviços, consumo de memória em repouso cerca de 271\% maior
+e mais que o triplo de artefatos de configuração.
+
+Entre os trabalhos analisados, este é o que mais se aproxima da metodologia proposta nesta
+monografia, por comparar duas versões funcionalmente equivalentes de uma mesma aplicação em
+ambiente controlado. A aplicação avaliada, entretanto, é um sistema de cadastro com poucas
+funcionalidades, o que limita a observação de aspectos como comunicação assíncrona,
+integração com serviços externos e consistência de dados entre serviços.
+
+\section{Análise Comparativa dos Trabalhos}
+\label{sec:analise-estado-arte}
+
+A Tabela~\ref{tab:trabalhos-relacionados} resume os trabalhos apresentados neste capítulo e
+posiciona a presente monografia em relação a eles.
+
+\begin{table}[htbp]
+\centering
+\caption{Resumo dos trabalhos do estado da arte}
+\label{tab:trabalhos-relacionados}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.9cm}|>{\raggedright\arraybackslash}p{3.4cm}|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{5.0cm}|}
+\hline
+\textbf{Trabalho} & \textbf{Aplicação e tecnologia} & \textbf{Aspectos avaliados} & \textbf{Principais resultados} \\ \hline
+\citeonline{villamizar2015} & Aplicação corporativa, Play \textit{Framework}, nuvem & Desempenho, implantação e custo em nuvem & Benefícios e desafios da adoção de microsserviços; redução de custo de infraestrutura \\ \hline
+\citeonline{aldebagy2018} & Aplicações geradas com JHipster (Spring Boot), Docker & Vazão e tempo de resposta sob carga e concorrência & Desempenho semelhante sob carga; monólito com vazão cerca de 6\% maior em concorrência \\ \hline
+\citeonline{mendes2021} & Pesquisa exploratória e quatro estudos de caso & Manutenibilidade e evolucionabilidade & Monólito indicado para descoberta do domínio; microsserviços mais sustentáveis, porém mais custosos \\ \hline
+\citeonline{blinowski2022} & Aplicação Web em Java e C\#.NET, local e Azure & Desempenho e escalabilidade & Monólito mais rápido em uma máquina; escala vertical mais vantajosa; excesso de instâncias degrada o desempenho \\ \hline
+\citeonline{santosjunior2024} & \textit{E-commerce}, migração com \textit{gateway} & Escalabilidade, resiliência e manutenibilidade & Proposta de arquitetura para a migração, sem medição comparativa \\ \hline
+\citeonline{vale2025} & Protótipo de cadastro, Node.js e Docker & Tempo de resposta, CPU, memória e implantação & Monólito com menor latência e infraestrutura mais simples \\ \hline
+Este trabalho & \textit{E-commerce} com pagamentos e mensageria, Java e Spring Boot & Desempenho, escalabilidade, manutenibilidade, complexidade e implantação & A serem apresentados no Capítulo~\ref{cap:resultados} \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+A análise dos trabalhos mostra que os resultados não são uniformes. Em geral, os estudos
+experimentais apontam vantagem do monólito em desempenho quando executado em uma única máquina
+ou sob carga moderada \cite{aldebagy2018, blinowski2022, vale2025}, enquanto os benefícios dos
+microsserviços aparecem em aspectos como custo de infraestrutura em nuvem, implantação
+independente e sustentabilidade da evolução do código \cite{villamizar2016, mendes2021}. Os
+resultados dependem, portanto, da aplicação, da carga, do ambiente de execução e das escolhas
+de infraestrutura, o que reforça a importância de comparações controladas.
+
+Observa-se também que os trabalhos experimentais utilizaram aplicações simplificadas, como
+sistemas de cadastro ou aplicações geradas automaticamente, e avaliaram principalmente o
+desempenho, enquanto os trabalhos que trataram de manutenibilidade e evolução o fizeram de
+forma qualitativa. O presente trabalho se diferencia por comparar as duas arquiteturas em uma
+aplicação de \textit{e-commerce} com funcionalidades realistas, organizada em seis módulos e
+incluindo autenticação com JWT, pagamentos integrados ao Mercado Pago em um módulo próprio,
+armazenamento de imagens e comunicação assíncrona com Apache Kafka, e por garantir, por meio
+de testes automatizados, que as duas versões apresentam comportamento funcional idêntico. Além
+disso, a avaliação abrange simultaneamente os cinco atributos de qualidade descritos no
+Capítulo~\ref{cap:referencial}, combinando medições de desempenho e de escalabilidade com
+métricas de código e de implantação.
+
+\section{Considerações Finais}
+
+Este capítulo apresentou o estado da arte sobre a comparação entre as arquiteturas monolítica
+e de microsserviços. Os trabalhos analisados mostram que não há consenso sobre qual
+arquitetura é superior: o monólito tende a apresentar melhor desempenho em cenários de menor
+escala, enquanto os microsserviços oferecem vantagens de custo, implantação e evolução em
+contextos específicos. Essa divergência, somada ao uso de aplicações simplificadas e à
+avaliação de poucos atributos por estudo, justifica a comparação proposta neste trabalho, cuja
+metodologia é descrita no Capítulo~\ref{cap:metodologia}.

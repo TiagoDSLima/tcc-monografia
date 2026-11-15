@@ -1,0 +1,364 @@
+\chapter{Referencial Teórico}
+\label{cap:referencial}
+
+\section{Considerações Iniciais}
+
+Este capítulo apresenta os conceitos que fundamentam a comparação proposta neste trabalho.
+Inicialmente, discute-se o que é arquitetura de software e por que ela é determinante para a
+qualidade de um sistema. Em seguida, são descritas as arquiteturas monolítica e de
+microsserviços, suas características, vantagens e limitações, bem como as formas de
+comunicação entre os componentes de cada uma. Depois, são definidos os atributos de qualidade
+utilizados como critérios de comparação e as métricas associadas a eles. Os trabalhos que
+compararam as duas abordagens são apresentados separadamente, no
+Capítulo~\ref{cap:estado-arte}.
+
+\section{Arquitetura de Software}
+
+Segundo \citeonline{bass2021}, a arquitetura de software de um sistema é o conjunto de
+estruturas necessárias para raciocinar sobre ele, compreendendo os elementos de software, as
+relações entre eles e as propriedades de ambos. A arquitetura, portanto, não se limita à
+organização do código-fonte: ela abrange também a forma como os componentes são executados,
+como se comunicam e como são implantados.
+
+Uma característica central da arquitetura é que suas decisões são difíceis e caras de reverter
+depois que o sistema está em produção. Por isso, \citeonline{richards2024} defendem que o
+trabalho do arquiteto consiste em analisar \textit{trade-offs}: toda decisão arquitetural traz
+benefícios e custos, e não existe uma solução universalmente melhor, apenas a mais adequada
+para um conjunto específico de requisitos. Esses autores distinguem ainda as
+\textit{características arquiteturais}, como desempenho, escalabilidade e manutenibilidade,
+dos requisitos funcionais do sistema; são justamente essas características que costumam
+orientar a escolha de um estilo arquitetural.
+
+A divisão de um sistema em partes menores é um tema clássico da engenharia de software.
+\citeonline{parnas1972} mostrou que a forma de decompor um sistema em módulos afeta
+diretamente sua flexibilidade e compreensibilidade, propondo que cada módulo esconda de
+outros as decisões de projeto mais sujeitas a mudanças (ocultação de informação). Esse
+princípio está na base tanto dos monólitos modulares quanto dos microsserviços. Já
+\citeonline{conway1968} observou que a estrutura de um sistema tende a refletir a estrutura de
+comunicação da organização que o desenvolve, observação conhecida como Lei de Conway e
+frequentemente citada na discussão sobre microsserviços, que costumam ser organizados em torno
+de equipes autônomas.
+
+\citeonline{richards2024} classificam os estilos arquiteturais em dois grandes grupos:
+\textit{monolíticos}, nos quais o sistema é implantado como uma única unidade, e
+\textit{distribuídos}, nos quais o sistema é formado por várias unidades implantadas
+separadamente que se comunicam pela rede. As arquiteturas comparadas neste trabalho
+representam esses dois grupos e são descritas nas seções seguintes.
+
+\section{Arquitetura Monolítica}
+
+Na arquitetura monolítica, todas as funcionalidades do sistema são construídas, empacotadas e
+implantadas como uma única aplicação, executada em um único processo
+\cite{richardson2018}. Em uma aplicação Web típica, isso significa que a interface de
+programação, as regras de negócio e o acesso a dados residem no mesmo artefato e,
+normalmente, compartilham um único banco de dados. A comunicação entre as partes do sistema
+ocorre por chamadas de método dentro do próprio processo, sem passar pela rede.
+
+\citeonline{newman2021} distingue três formas de monólito: o \textit{monólito de processo
+único}, em que todo o código é implantado como um único processo; o \textit{monólito
+modular}, variação do anterior em que o código é dividido em módulos bem delimitados que,
+ainda assim, são implantados em conjunto; e o \textit{monólito distribuído}, um sistema
+formado por vários serviços que, por estarem fortemente acoplados, precisam ser implantados
+juntos, reunindo as desvantagens das duas abordagens. O monólito modular é apontado pelo autor
+como uma alternativa sólida, pois preserva a simplicidade operacional do monólito e, ao mesmo
+tempo, organiza o código de forma semelhante à decomposição em serviços.
+
+Entre as vantagens da arquitetura monolítica, \citeonline{richardson2018} destaca a
+simplicidade de desenvolvimento, de testes e de implantação, já que existe apenas um artefato
+a ser construído, testado e publicado. As transações também são mais simples: como os dados
+estão em um único banco, operações que envolvem várias partes do sistema podem ser executadas
+em uma única transação, com as garantias de atomicidade e consistência oferecidas pelo
+sistema gerenciador de banco de dados. Além disso, a ausência de comunicação pela rede entre
+as partes do sistema elimina a latência e as falhas parciais típicas dos sistemas
+distribuídos.
+
+Por outro lado, à medida que a aplicação cresce, o monólito tende a apresentar limitações.
+\citeonline{richardson2018} descreve esse cenário como o ``inferno do monólito'': o código se
+torna grande e difícil de compreender, o tempo de compilação e de inicialização aumenta,
+qualquer alteração exige a reimplantação de toda a aplicação e a escalabilidade fica restrita
+à replicação do sistema inteiro, mesmo quando apenas uma parte dele está sobrecarregada. A
+aplicação também fica presa a uma única pilha tecnológica, o que dificulta a adoção de novas
+tecnologias.
+
+Apesar dessas limitações, \citeonline{fowler2015} argumenta que quase todos os casos de
+sucesso com microsserviços começaram como monólitos que cresceram demais e foram
+decompostos, enquanto sistemas construídos como microsserviços desde o início com frequência
+enfrentaram sérios problemas. Por isso, o autor recomenda começar com um monólito e só
+decompô-lo quando os limites entre as partes do sistema estiverem bem compreendidos.
+
+\section{Arquitetura de Microsserviços}
+
+O termo microsserviços foi popularizado por \citeonline{lewis2014}, que descrevem o estilo como
+uma abordagem para desenvolver uma aplicação como um conjunto de pequenos serviços, cada um
+executado em seu próprio processo e comunicando-se por mecanismos leves, geralmente uma
+interface HTTP. Esses serviços são construídos em torno de capacidades de negócio e podem ser
+implantados de forma independente por meio de processos automatizados, com o mínimo de
+gerenciamento centralizado, podendo inclusive utilizar linguagens de programação e tecnologias
+de armazenamento de dados diferentes.
+
+Os mesmos autores apontam um conjunto de características comuns às arquiteturas de
+microsserviços, entre elas: a componentização por meio de serviços; a organização em torno de
+capacidades de negócio; a preferência por ``\textit{endpoints} inteligentes e canais simples'',
+em que a lógica fica nos serviços e não na infraestrutura de comunicação; a governança e o
+gerenciamento de dados descentralizados; a automação da infraestrutura; e o projeto voltado à
+tolerância a falhas \cite{lewis2014}. \citeonline{dragoni2017} situam os microsserviços como
+uma evolução da arquitetura orientada a serviços, caracterizada por serviços menores, mais
+coesos e implantados de forma independente.
+
+Para \citeonline{newman2021}, a característica essencial de um microsserviço é poder ser
+implantado de forma independente, sem exigir a implantação de outros serviços. Para isso, cada
+serviço deve ser modelado em torno de um domínio de negócio e encapsular seus próprios dados.
+A definição dos limites de cada serviço costuma se apoiar no conceito de contexto delimitado
+(\textit{bounded context}), proposto por \citeonline{evans2003} no projeto orientado a domínio
+(\textit{Domain-Driven Design}). Desse princípio decorre o padrão de banco de dados por
+serviço, no qual nenhum serviço acessa diretamente os dados de outro; o compartilhamento de
+informações ocorre apenas por meio das interfaces expostas por cada serviço
+\cite{richardson2018}.
+
+Como os clientes da aplicação precisariam conhecer o endereço de vários serviços, é comum o
+uso de um \textit{API Gateway}: um ponto de entrada único que recebe as requisições externas e
+as encaminha ao serviço responsável, podendo concentrar responsabilidades transversais, como a
+autenticação \cite{richardson2018}. A Figura~\ref{fig:arquiteturas} ilustra a diferença
+estrutural entre as duas arquiteturas, utilizando como exemplo os seis módulos da aplicação de
+\textit{e-commerce} desenvolvida neste trabalho: autenticação (Auth), participantes, produtos,
+loja, pedidos e pagamentos. No monólito, esses módulos compartilham o mesmo processo e o mesmo
+banco de dados; nos microsserviços, cada um se torna um serviço com banco próprio, acessado
+pelo \textit{API Gateway} e integrado aos demais por requisições HTTP ou por mensagens
+publicadas em um \textit{broker}.
+
+\begin{figure}[htbp]
+\centering
+\caption{Organização de uma aplicação de \textit{e-commerce} nas arquiteturas (a) monolítica e (b) de microsserviços}
+\label{fig:arquiteturas}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    modulo/.style={draw, rounded corners=2pt, minimum width=2.6cm, minimum height=0.8cm, fill=gray!10, font=\small},
+    bd/.style={draw, cylinder, shape border rotate=90, aspect=0.25, minimum width=1.4cm, minimum height=0.9cm, fill=gray!25, font=\footnotesize},
+    seta/.style={-{Stealth[length=2.2mm]}, thick},
+    rotulo/.style={font=\small\bfseries, anchor=west}
+]
+\node[rotulo] at (-1.3, 2.7) {(a) Arquitetura monolítica};
+\node[modulo] (mauth) at (0,0) {Auth};
+\node[modulo] (mpart) at (2.9,0) {Participante};
+\node[modulo] (mprod) at (5.8,0) {Produto};
+\node[modulo] (mloja) at (8.7,0) {Loja};
+\node[modulo] (mped) at (11.6,0) {Pedido};
+\node[modulo] (mpag) at (14.5,0) {Pagamento};
+\node[draw, thick, rounded corners=4pt, inner sep=8pt, fit=(mauth)(mpag), label={[font=\footnotesize]below:Aplicação única: um processo e um artefato de implantação}] (mono) {};
+\node[modulo, fill=white] (mcli) at (7.25,1.7) {Cliente};
+\draw[seta] (mcli) -- (mono.north -| mcli);
+\node[bd, minimum width=2.2cm] (mbd) at (7.25,-2.5) {BD único};
+\draw[seta] (mono.south -| mbd) ++(0,-0.45) -- (mbd.north);
+
+\node[rotulo] at (-1.3, -3.8) {(b) Arquitetura de microsserviços};
+\node[modulo, fill=white] (cli) at (7.25,-4.5) {Cliente};
+\node[modulo, fill=gray!30] (gw) at (7.25,-5.9) {API Gateway};
+\draw[seta] (cli) -- (gw);
+\foreach \nome/\x/\id in {Auth/0/sauth, Participante/2.9/spart, Produto/5.8/sprod, Loja/8.7/sloja, Pedido/11.6/sped, Pagamento/14.5/spag} {
+    \node[modulo] (\id) at (\x,-7.6) {\nome};
+    \node[bd] (bd\id) at (\x,-9.2) {BD};
+    \draw[seta] (\id) -- (bd\id);
+    \draw[seta] (gw.south) -- (\id.north);
+}
+\node[draw, rounded corners=2pt, minimum width=17.1cm, minimum height=0.8cm, fill=gray!30, font=\small] (broker) at (7.25,-10.9) {\textit{Broker} de mensagens (comunicação assíncrona)};
+\foreach \id in {sauth, spart, sprod, sped, spag} {
+    \draw[dashed, thick, {Stealth[length=2mm]}-{Stealth[length=2mm]}] ([xshift=-0.15cm]\id.south east) -- ([xshift=-0.15cm]\id.south east |- broker.north);
+}
+\end{tikzpicture}%
+}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{figure}
+
+Entre os benefícios dos microsserviços, \citeonline{newman2021} destaca a possibilidade de
+utilizar tecnologias diferentes em cada serviço, a maior robustez (uma falha em um serviço
+não precisa derrubar todo o sistema), a escalabilidade seletiva (apenas os serviços
+sobrecarregados precisam ser replicados), a facilidade de implantar alterações de forma
+isolada e o alinhamento entre a arquitetura e a organização das equipes.
+
+Esses benefícios, entretanto, têm custos. Ao distribuir o sistema, a aplicação passa a lidar
+com problemas que não existem em um monólito: a comunicação pela rede é mais lenta e sujeita a
+falhas; os dados ficam espalhados entre vários bancos, o que impede transações locais e
+geralmente leva à consistência eventual; e a quantidade de componentes a serem configurados,
+monitorados, testados e implantados aumenta consideravelmente \cite{newman2021}. Para manter a
+consistência em operações que envolvem vários serviços, \citeonline{richardson2018} propõe o
+padrão \textit{Saga}, em que a operação é dividida em uma sequência de transações locais
+coordenadas por mensagens. \citeonline{richards2024} lembram ainda as chamadas falácias da
+computação distribuída, suposições equivocadas como a de que a rede é confiável, a latência
+é zero e a largura de banda é infinita, que, quando ignoradas, comprometem sistemas
+distribuídos como os baseados em microsserviços. A Tabela~\ref{tab:comparacao-arquiteturas}
+sintetiza as principais diferenças entre as duas arquiteturas.
+
+\begin{table}[htbp]
+\centering
+\caption{Síntese das principais diferenças entre as arquiteturas monolítica e de microsserviços}
+\label{tab:comparacao-arquiteturas}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.9cm}|>{\raggedright\arraybackslash}p{5.9cm}|}
+\hline
+\textbf{Aspecto} & \textbf{Monolítica} & \textbf{Microsserviços} \\ \hline
+Implantação & Um único artefato; toda alteração exige reimplantar o sistema inteiro & Cada serviço é implantado de forma independente \\ \hline
+Escalabilidade & Replicação da aplicação inteira & Replicação apenas dos serviços necessários \\ \hline
+Comunicação interna & Chamadas de método no mesmo processo & Chamadas pela rede (HTTP) e mensageria \\ \hline
+Dados & Banco de dados compartilhado & Banco de dados por serviço \\ \hline
+Consistência & Transações locais (ACID) & Consistência eventual e padrões como \textit{Saga} \\ \hline
+Falhas & Uma falha grave pode indisponibilizar todo o sistema & Falhas podem ficar isoladas em um serviço, mas surgem falhas parciais de rede \\ \hline
+Tecnologia & Pilha tecnológica única & Possibilidade de tecnologias diferentes por serviço \\ \hline
+Complexidade operacional & Menor: poucos componentes a implantar e monitorar & Maior: muitos componentes, infraestrutura de comunicação e observabilidade \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor com base em \citeonline{lewis2014}, \citeonline{richardson2018} e \citeonline{newman2021}.}
+\end{table}
+
+\section{Comunicação entre Componentes}
+
+A forma como as partes de um sistema se comunicam é uma das principais diferenças entre as
+duas arquiteturas. Em um monólito, os módulos se comunicam por chamadas de método dentro do
+mesmo processo, que são rápidas, confiáveis e podem participar da mesma transação. Em uma
+arquitetura de microsserviços, os serviços precisam se comunicar pela rede, de forma síncrona
+ou assíncrona \cite{richardson2018}.
+
+\subsection{Comunicação Síncrona}
+
+Na comunicação síncrona, um serviço envia uma requisição e aguarda a resposta para continuar o
+processamento. A forma mais comum desse tipo de comunicação em microsserviços é o uso de
+requisições HTTP seguindo o estilo arquitetural REST (\textit{Representational State
+Transfer}), definido por \citeonline{fielding2000} como um conjunto de restrições para sistemas
+hipermídia distribuídos, entre elas a comunicação cliente-servidor sem estado e o uso de uma
+interface uniforme para manipular recursos.
+
+A comunicação síncrona é simples de implementar e de compreender, pois se assemelha a uma
+chamada de função. No entanto, ela cria um acoplamento temporal entre os serviços: o serviço
+que faz a chamada depende de que o outro esteja disponível e responda a tempo. Assim, a
+latência de cada chamada se soma ao tempo total da operação e a indisponibilidade de um
+serviço pode se propagar em cascata para os serviços que dependem dele
+\cite{newman2021, richardson2018}.
+
+\subsection{Comunicação Assíncrona e Mensageria}
+
+Na comunicação assíncrona, o serviço que origina a comunicação não aguarda uma resposta
+imediata. Em vez disso, publica uma mensagem em um intermediário, o \textit{broker} de
+mensagens, que a entrega aos serviços interessados. \citeonline{hohpe2003} descrevem a
+mensageria como uma forma de integração que desacopla emissores e receptores: eles não
+precisam conhecer um ao outro nem estar disponíveis ao mesmo tempo, pois as mensagens ficam
+armazenadas no intermediário até serem consumidas.
+
+O Apache Kafka, utilizado neste trabalho, é uma plataforma de mensageria distribuída
+originalmente desenvolvida no LinkedIn para o processamento de grandes volumes de dados de
+\textit{log} \cite{kreps2011}. Nele, as mensagens são publicadas em tópicos e mantidas em um
+\textit{log} persistente, a partir do qual os consumidores as leem no próprio ritmo. Esse
+modelo permite que um serviço reaja a eventos de outro, como a criação de um usuário ou a
+aprovação de um pagamento, sem que exista uma dependência direta entre eles.
+
+Em contrapartida, a comunicação assíncrona torna o fluxo do sistema mais difícil de
+acompanhar e depurar, introduz um componente adicional de infraestrutura e leva à
+consistência eventual: durante um intervalo de tempo, os dados de serviços diferentes podem
+não refletir o mesmo estado \cite{richardson2018}.
+
+\section{Atributos de Qualidade Avaliados}
+
+A qualidade de um produto de software pode ser descrita por meio de atributos não funcionais.
+A norma ISO/IEC 25010 define um modelo de qualidade de produto composto, em sua edição de 2023,
+por nove características, entre elas a eficiência de desempenho, a manutenibilidade e a
+flexibilidade, esta última incluindo a escalabilidade como subcaracterística
+\cite{iso25010}. \citeonline{bass2021} tratam esses atributos como \textit{atributos de
+qualidade} e mostram que cada decisão arquitetural favorece alguns deles em detrimento de
+outros. Esta seção descreve os cinco atributos utilizados como critérios de comparação neste
+trabalho e as métricas associadas a cada um.
+
+\subsection{Desempenho}
+
+O desempenho diz respeito à capacidade do sistema de responder às requisições dentro dos
+limites de tempo esperados e de utilizar os recursos computacionais de forma eficiente. A
+norma ISO/IEC 25010 trata esse atributo como \textit{eficiência de desempenho}, dividida em
+comportamento temporal, utilização de recursos e capacidade \cite{iso25010}.
+
+\citeonline{jain1991} apresenta as métricas mais utilizadas na análise de desempenho de
+sistemas computacionais: o \textit{tempo de resposta}, intervalo entre o envio de uma
+requisição e o recebimento da resposta; a \textit{vazão} (\textit{throughput}), quantidade de
+requisições atendidas por unidade de tempo; e a \textit{utilização}, fração do tempo em que um
+recurso, como o processador, permanece ocupado. Como o tempo de resposta varia entre
+requisições, é comum analisá-lo por meio de percentis: o percentil 95, por exemplo, indica o
+tempo dentro do qual 95\% das requisições foram atendidas, revelando o comportamento das
+requisições mais lentas, que a média tende a ocultar.
+
+Na comparação entre as arquiteturas, espera-se que a comunicação pela rede entre os
+microsserviços acrescente latência às operações que envolvem vários serviços, enquanto no
+monólito essas operações ocorrem em memória \cite{richards2024}.
+
+\subsection{Escalabilidade}
+
+\citeonline{bondi2000} define escalabilidade como a capacidade de um sistema de acomodar o
+aumento de carga, de volume de dados ou de usuários mantendo um desempenho aceitável. Há duas
+formas principais de escalar um sistema: a \textit{escalabilidade vertical}, que aumenta os
+recursos de uma mesma máquina, como processador e memória; e a \textit{escalabilidade
+horizontal}, que adiciona novas instâncias do sistema e distribui a carga entre elas.
+
+\citeonline{abbott2015} propõem o cubo de escalabilidade, que organiza as estratégias de
+escala em três eixos: no eixo X, a aplicação inteira é replicada atrás de um balanceador de
+carga; no eixo Y, o sistema é decomposto por funcionalidade, de modo que cada parte possa ser
+escalada separadamente; e no eixo Z, os dados são particionados entre instâncias.
+\citeonline{richardson2018} utiliza esse modelo para mostrar que o monólito escala
+essencialmente no eixo X, enquanto os microsserviços correspondem a uma decomposição no eixo
+Y, permitindo replicar apenas os serviços sob maior demanda. A escalabilidade pode ser medida
+pela variação da vazão e do tempo de resposta à medida que se acrescentam instâncias e pela
+eficiência dessa escala, isto é, o ganho obtido em relação aos recursos adicionados.
+
+\subsection{Manutenibilidade}
+
+A manutenibilidade é o grau de eficácia e eficiência com que um sistema pode ser modificado
+para corrigir defeitos, melhorá-lo ou adaptá-lo. A norma ISO/IEC 25010 a divide em
+modularidade, reusabilidade, analisabilidade, modificabilidade e testabilidade
+\cite{iso25010}.
+
+Para quantificar esse atributo, são utilizadas métricas de código-fonte. A
+\textit{complexidade ciclomática}, proposta por \citeonline{mccabe1976}, mede o número de
+caminhos independentes no fluxo de controle de um programa: quanto maior, mais difícil é
+compreender e testar o código. \citeonline{chidamber1994} propuseram um conjunto de métricas
+para sistemas orientados a objetos, conhecido como métricas CK, entre as quais se destacam o
+acoplamento entre objetos (CBO), que conta de quantas outras classes uma classe depende, e a
+falta de coesão em métodos (LCOM), que indica se os métodos de uma classe trabalham sobre os
+mesmos dados. Somam-se a essas métricas o tamanho do código, medido em linhas de código, e a
+duplicação. Uma forma complementar de avaliar a manutenibilidade é analisar o impacto de uma
+mesma alteração nas duas arquiteturas, verificando quantos arquivos, módulos e implantações
+são afetados.
+
+\subsection{Complexidade de Desenvolvimento}
+
+A complexidade de desenvolvimento refere-se ao esforço necessário para construir e evoluir o
+sistema, considerando a quantidade de componentes, configurações e conceitos técnicos que os
+desenvolvedores precisam dominar. Diferentemente dos demais atributos, não se trata de uma
+característica definida na norma ISO/IEC 25010, mas de um aspecto recorrente na comparação
+entre as duas arquiteturas.
+
+\citeonline{newman2021} aponta que os microsserviços afetam a experiência dos desenvolvedores
+e podem levar a uma sobrecarga tecnológica, pois exigem o domínio de ferramentas de
+comunicação, mensageria, implantação e observabilidade que não seriam necessárias em um
+monólito. Parte dessa complexidade não decorre do problema de negócio em si, mas da
+distribuição do sistema, como o tratamento de falhas de rede, a autenticação entre serviços e
+a duplicação de modelos de dados entre serviços. Essa complexidade pode ser estimada pelo
+número de projetos e artefatos, pela quantidade de arquivos de configuração, pelo número de
+dependências e pela proporção de código dedicada à infraestrutura de comunicação.
+
+\subsection{Implantação}
+
+A implantação (\textit{deployability}) é a capacidade de colocar uma nova versão do sistema em
+execução de forma rápida, previsível e com baixo risco \cite{bass2021}. Nos microsserviços,
+cada serviço pode ser implantado de forma independente, o que reduz o impacto de cada
+alteração, mas multiplica o número de artefatos, processos e componentes de infraestrutura que
+precisam ser gerenciados \cite{newman2021}. No monólito, existe um único artefato, mais simples
+de implantar, porém qualquer alteração exige a reimplantação de todo o sistema.
+
+Esse atributo pode ser avaliado pelo número de artefatos e contêineres necessários para
+executar o sistema, pelo tempo de construção e de inicialização, pelo tamanho das imagens de
+implantação, pelo consumo de recursos em repouso e pela quantidade de etapas necessárias para
+colocar o ambiente em funcionamento.
+
+\section{Considerações Finais}
+
+Este capítulo apresentou os fundamentos teóricos necessários para a comparação proposta. A
+arquitetura monolítica oferece simplicidade de desenvolvimento, de implantação e de
+consistência de dados, mas tende a se tornar mais difícil de manter e escalar à medida que
+cresce. A arquitetura de microsserviços favorece a implantação independente e a escalabilidade
+seletiva, ao custo de introduzir a complexidade dos sistemas distribuídos. Os atributos de
+qualidade e as métricas descritos servem de base para os critérios de comparação definidos no
+Capítulo~\ref{cap:metodologia}. O próximo capítulo apresenta o estado da arte, reunindo os
+trabalhos que já compararam as duas arquiteturas na prática.

@@ -1,0 +1,97 @@
+\chapter{Introdução}
+
+\section{Considerações Iniciais}
+
+A área de desenvolvimento de software tem evoluído com a necessidade de sistemas mais
+escaláveis e de fácil manutenção, tornando a arquitetura de software um fator essencial no
+desenvolvimento de aplicações. As decisões arquiteturais definem a organização dos elementos
+de um sistema e influenciam diretamente atributos de qualidade como desempenho,
+escalabilidade e manutenibilidade \cite{bass2021}. Entre os principais modelos arquiteturais
+adotados no desenvolvimento de aplicações Web, destacam-se o monolítico e o de microsserviços
+\cite{softdesign2020}.
+
+A arquitetura monolítica concentra toda a aplicação em uma única unidade de implantação, o
+que tende a facilitar o desenvolvimento, os testes e a implantação nas fases iniciais de um
+projeto, mas pode dificultar a escalabilidade e a manutenção à medida que o sistema cresce
+\cite{richardson2018}. Já a arquitetura de microsserviços divide o sistema em serviços
+pequenos e independentes, cada um executado em seu próprio processo e implantado de forma
+autônoma, comunicando-se por mecanismos leves, como requisições HTTP ou mensageria
+\cite{lewis2014}. Essa abordagem oferece maior flexibilidade para evoluir e escalar partes
+específicas do sistema, porém transfere para a aplicação a complexidade inerente aos sistemas
+distribuídos, como latência de rede, falhas parciais e consistência de dados entre serviços
+\cite{newman2021}.
+
+Nos últimos anos, os microsserviços passaram a ser amplamente difundidos na indústria, muitas
+vezes apresentados como a escolha natural para sistemas modernos. Entretanto, a adoção desse
+estilo nem sempre traz os benefícios esperados: há relatos de organizações que, diante de
+custos operacionais elevados, reagruparam serviços distribuídos em uma única aplicação, como
+no caso do serviço de monitoramento de vídeo do Prime Video \cite{kolny2023}. Autores como
+\citeonline{fowler2015} e \citeonline{newman2021} recomendam, inclusive, que sistemas novos
+comecem como monólitos e só sejam decompostos quando houver razões concretas para isso.
+
+Diante desse cenário, surge a seguinte questão: em quais aspectos e em quais contextos cada
+uma dessas arquiteturas se mostra mais vantajosa? Para respondê-la, este trabalho compara as
+duas abordagens por meio do desenvolvimento de duas aplicações de \textit{e-commerce} com as
+mesmas tecnologias e funcionalidades, uma em arquitetura monolítica e outra em arquitetura de
+microsserviços, ambas implementadas em Java com o \textit{framework} Spring Boot. As duas
+versões oferecem cadastro e autenticação de usuários, catálogo de produtos, personalização da
+loja, realização de pedidos e processamento de pagamentos integrado ao Mercado Pago, e são avaliadas segundo os critérios de
+desempenho, escalabilidade, manutenibilidade, complexidade de desenvolvimento e implantação.
+Como resultado, espera-se identificar as principais vantagens e desvantagens de cada
+abordagem, contribuindo para a escolha da arquitetura mais adequada em diferentes contextos.
+
+\section{Objetivos do Trabalho}
+
+Como objetivo geral, serão desenvolvidas duas aplicações de \textit{e-commerce} com as mesmas
+funcionalidades, utilizando as arquiteturas monolítica e de microsserviços, a fim de comparar
+suas características, vantagens e limitações. Para alcançar esse objetivo, foram definidos os
+seguintes objetivos específicos:
+
+\begin{itemize}
+    \item Analisar as diferenças conceituais entre a arquitetura monolítica e a arquitetura de
+    microsserviços;
+    \item Levantar o estado da arte sobre a comparação entre as duas arquiteturas, identificando
+    os métodos, as métricas e os resultados de trabalhos anteriores;
+    \item Desenvolver aplicações com as mesmas funcionalidades em ambas as arquiteturas;
+    \item Avaliar as duas aplicações quanto ao desempenho, à escalabilidade, à
+    manutenibilidade, à complexidade de desenvolvimento e à implantação;
+    \item Identificar os benefícios e desafios de cada abordagem;
+    \item Auxiliar desenvolvedores na escolha da arquitetura mais adequada para cada projeto.
+\end{itemize}
+
+\section{Justificativa}
+
+Com o avanço das aplicações modernas, a escolha da arquitetura de software tornou-se essencial
+para garantir desempenho, escalabilidade e manutenção adequados. Por envolver decisões
+difíceis de reverter depois que o sistema está em produção, a arquitetura exige que suas
+escolhas sejam fundamentadas na análise de \textit{trade-offs}, isto é, das vantagens e
+desvantagens de cada alternativa \cite{richards2024}. Nesse contexto, compreender diferentes
+modelos arquiteturais é fundamental para a formação de profissionais da área.
+
+Atualmente, observa-se um aumento na adoção de microsserviços, embora nem sempre essa escolha
+seja a mais adequada, devido à complexidade que acrescenta ao desenvolvimento e à operação dos
+sistemas \cite{newman2021, aws-monolito-microsservicos}. Os estudos que comparam
+experimentalmente as duas arquiteturas apresentam resultados divergentes, que variam conforme
+a aplicação, a carga e o ambiente de execução \cite{aldebagy2018, blinowski2022}. Diante disso,
+surge a necessidade de analisar, de forma prática e controlada, quando utilizar microsserviços
+ou monolito.
+
+Assim, este trabalho se justifica pela proposta de comparar, na prática, essas duas
+arquiteturas em uma aplicação com funcionalidades realistas, como autenticação, pagamento
+integrado, armazenamento de imagens e comunicação assíncrona, contribuindo para uma melhor
+tomada de decisão no desenvolvimento de sistemas.
+
+\section{Estrutura da Monografia}
+
+Este trabalho está organizado em sete capítulos. O Capítulo~\ref{cap:referencial} apresenta o
+referencial teórico sobre arquitetura de software, as arquiteturas monolítica e de
+microsserviços, as formas de comunicação entre componentes e os atributos de qualidade
+utilizados na comparação. O Capítulo~\ref{cap:estado-arte} apresenta o estado da arte, descrevendo
+os trabalhos que compararam as duas arquiteturas e posicionando este trabalho em relação a
+eles. O Capítulo~\ref{cap:metodologia}
+descreve a metodologia adotada, incluindo os requisitos das aplicações, as tecnologias, o
+ambiente de testes e as métricas de comparação. O Capítulo~\ref{cap:desenvolvimento} detalha o
+desenvolvimento das duas versões da aplicação de \textit{e-commerce} e as diferenças entre
+elas. O Capítulo~\ref{cap:resultados} apresenta e discute os resultados obtidos em cada
+critério de comparação. Por fim, o Capítulo~\ref{cap:conclusoes} traz as conclusões, as
+contribuições do trabalho e as sugestões de trabalhos futuros.
