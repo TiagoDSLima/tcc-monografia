@@ -3,15 +3,200 @@
 
 \section{Considerações Iniciais}
 
+Este capítulo apresenta os resultados da comparação entre as duas versões da aplicação, de
+acordo com os critérios definidos no Capítulo~\ref{cap:metodologia}: as métricas de código, que
+fundamentam a análise da manutenibilidade e da complexidade de desenvolvimento, as medições de
+implantação e os resultados da calibração, uma execução única do teste de estresse em cada
+cenário, realizada para definir as taxas dos testes de carga.
+
 \section{Desempenho}
+
+A calibração consistiu em um teste de estresse de cada cenário, com a taxa aumentada em oito
+degraus de um minuto e com o orçamento padrão de 4 CPUs e 4 GB para a camada de aplicação. A
+Tabela~\ref{tab:calibracao} apresenta a vazão máxima sustentada por cada arquitetura, isto é, a
+maior taxa em que o percentil 95 do tempo de resposta permaneceu abaixo de um segundo e a taxa
+de erros abaixo de 1\%, além do componente que limitou a vazão.
+
+\begin{table}[htbp]
+\centering
+\caption{Vazão máxima sustentada na calibração (resultado preliminar, execução única)}
+\label{tab:calibracao}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.9cm}|>{\centering\arraybackslash}p{2.0cm}|>{\raggedright\arraybackslash}p{4.0cm}|>{\centering\arraybackslash}p{2.0cm}|>{\raggedright\arraybackslash}p{4.0cm}|}
+\hline
+\multirow{2}{*}{\textbf{Cenário}} & \multicolumn{2}{c|}{\textbf{Monolítica}} & \multicolumn{2}{c|}{\textbf{Microsserviços}} \\ \cline{2-5}
+ & \textbf{Vazão (it/s)} & \textbf{Fator limitante} & \textbf{Vazão (it/s)} & \textbf{Fator limitante} \\ \hline
+Catálogo & $\geq$ 600 & Não saturou; uso máximo de 2,1 das 4 CPUs & 300 & CPU do \textit{gateway} e do serviço de produtos \\ \hline
+Compra & 38 & \textit{Pool} de conexões com o banco de dados & 19 & CPU dos serviços de pedidos e de pagamentos \\ \hline
+Misto & 200 & \textit{Pool} de conexões com o banco de dados & 200 & CPU do \textit{gateway} e dos serviços de produtos, pedidos e pagamentos \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). Cada iteração do catálogo faz três requisições, e cada iteração da compra faz duas.}
+\end{table}
+
+No cenário de catálogo, composto apenas por consultas, o monólito sustentou todos os degraus
+até 600 iterações por segundo, cerca de 1.800 requisições por segundo, com percentil 99 abaixo
+de 4~ms, utilizando no máximo 2,1 das 4 CPUs disponíveis. A versão em microsserviços sustentou
+300 iterações por segundo e, a partir de 375, o percentil 95 ultrapassou um segundo. O limite foi
+imposto pelo \textit{gateway} e pelo serviço de produtos, que atingiram o teto de 0,75 CPU
+atribuído a cada um, enquanto outros serviços permaneciam praticamente ociosos. Esse resultado
+ilustra uma consequência da divisão do orçamento: no monólito, toda a capacidade de
+processamento fica disponível para a operação que estiver em uso, enquanto nos microsserviços
+cada serviço só pode usar a sua parte, e o \textit{gateway} participa de todas as requisições.
+
+No cenário de compra, o monólito sustentou 38 iterações por segundo e a versão em
+microsserviços, 19. No monólito, porém, o limite não foi o processador, do qual utilizou em
+média 0,37 das 4 CPUs disponíveis, mas o \textit{pool} de conexões com o banco de dados, que tem dez conexões na
+configuração padrão do Spring Boot. Como a criação do pedido ocorre dentro de uma transação que
+inclui a chamada ao Mercado Pago, cada pedido mantém uma conexão ocupada durante todo o tempo de
+resposta do serviço externo. Nos microsserviços, cada serviço possui o seu próprio
+\textit{pool}, mas o limite foi atingido antes, pelo processador dos serviços de pedidos e de
+pagamentos, cada um com 0,5 CPU.
+
+No cenário misto, as duas arquiteturas sustentaram 200 iterações por segundo e saturaram no
+degrau seguinte, mas por motivos diferentes: o monólito pelo \textit{pool} de conexões, quando
+a taxa de compras chegou a 50 por segundo, e os microsserviços pelo processador dos serviços
+envolvidos. Enquanto ambas se mantiveram abaixo do ponto de saturação, o percentil 95 do tempo de
+resposta foi de cerca de 110~ms no monólito e de 125 a 300~ms nos microsserviços, valores
+dominados pelo atraso de 100~ms do simulador de pagamento nas requisições de compra.
+
+Após a saturação, o comportamento das arquiteturas se diferenciou. No monólito, quando o fluxo de
+compra esgotou o \textit{pool} de conexões, as consultas ao catálogo também foram afetadas: o seu
+percentil 95 passou de 2,2~ms para 2,9~s, porque as requisições de compra em espera ocuparam os
+recursos compartilhados da aplicação. Nos microsserviços, no mesmo degrau, o percentil 95 do
+catálogo ficou em 288~ms, já que os serviços de produtos e de loja não compartilham recursos com
+os de pedidos e de pagamentos. Esse isolamento de falhas é uma das vantagens atribuídas aos
+microsserviços por \citeonline{newman2021}.
+
+A Tabela~\ref{tab:recursos-calibracao} apresenta o consumo médio de CPU e de memória da camada de
+aplicação durante a calibração.
+
+\begin{table}[htbp]
+\centering
+\caption{Consumo médio da camada de aplicação durante a calibração (resultado preliminar)}
+\label{tab:recursos-calibracao}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.4cm}|>{\centering\arraybackslash}p{2.8cm}|>{\centering\arraybackslash}p{2.8cm}|>{\centering\arraybackslash}p{2.8cm}|>{\centering\arraybackslash}p{2.8cm}|}
+\hline
+\multirow{2}{*}{\textbf{Cenário}} & \multicolumn{2}{c|}{\textbf{CPU média (núcleos)}} & \multicolumn{2}{c|}{\textbf{Memória média (MB)}} \\ \cline{2-5}
+ & \textbf{Monolítica} & \textbf{Microsserviços} & \textbf{Monolítica} & \textbf{Microsserviços} \\ \hline
+Catálogo & 0,99 & 1,57 & 572 & 2.098 \\ \hline
+Compra & 0,37 & 1,11 & 676 & 2.389 \\ \hline
+Misto & 0,61 & 2,08 & 607 & 2.484 \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). Valores médios ao longo de todo o teste de estresse, incluindo os degraus após a saturação.}
+\end{table}
+
+Em todos os cenários, a versão em microsserviços consumiu mais recursos para atender à mesma
+carga: entre 1,6 e 3,4 vezes mais CPU e de 3,5 a 4,1 vezes mais memória. A diferença de
+memória decorre principalmente de cada serviço executar sua própria máquina virtual Java, com o
+\textit{framework} e as bibliotecas carregados em memória sete vezes; a diferença de CPU inclui o
+trabalho adicional de serialização, transmissão e validação das requisições entre os serviços.
 
 \section{Escalabilidade}
 
 \section{Manutenibilidade}
 
+As métricas de código foram extraídas com a ferramenta CK \cite{aniche-ck} sobre o código de
+produção das duas versões. A Tabela~\ref{tab:ck} apresenta os totais e as médias por classe.
+
+\begin{table}[htbp]
+\centering
+\caption{Métricas de código por arquitetura (ferramenta CK)}
+\label{tab:ck}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{6.6cm}|>{\centering\arraybackslash}p{3.6cm}|>{\centering\arraybackslash}p{3.6cm}|}
+\hline
+\textbf{Métrica} & \textbf{Monolítica} & \textbf{Microsserviços} \\ \hline
+Classes, interfaces e enumerações & 78 & 123 \\ \hline
+Linhas de código (CK) & 973 & 1.470 \\ \hline
+Acoplamento entre objetos (CBO) médio & 5,79 & 5,67 \\ \hline
+Complexidade por classe (WMC) média & 2,73 & 2,45 \\ \hline
+Resposta por classe (RFC) média & 6,17 & 5,68 \\ \hline
+Falta de coesão em métodos (LCOM) média & 1,54 & 1,21 \\ \hline
+Complexidade total (soma do WMC) & 213 & 301 \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). A ferramenta não contabiliza os \textit{records} do Java, utilizados nos objetos de transferência de dados, que estão incluídos apenas nas contagens da Tabela~\ref{tab:repositorios}.}
+\end{table}
+
+As médias por classe são muito próximas nas duas versões, o que é esperado, já que as regras de
+negócio e a organização interna de cada domínio são as mesmas. A diferença está no volume: a
+versão em microsserviços tem 58\% mais classes, 51\% mais linhas de código e 41\% mais
+complexidade total para implementar as mesmas funcionalidades. Esse acréscimo corresponde ao
+código necessário para a distribuição, como os clientes HTTP, os publicadores e consumidores de
+mensagens, as classes de representação de dados de outros serviços, as configurações de cada
+aplicação e o \textit{API Gateway}. As médias ligeiramente menores de acoplamento e de falta de
+coesão nos microsserviços refletem justamente esse grande número de classes pequenas e simples,
+e não uma melhora da estrutura das regras de negócio.
+
 \section{Complexidade de Desenvolvimento}
 
+A Tabela~\ref{tab:repositorios} reúne as contagens extraídas dos repositórios das duas versões.
+
+\begin{table}[htbp]
+\centering
+\caption{Tamanho e configuração dos repositórios}
+\label{tab:repositorios}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{7.4cm}|>{\centering\arraybackslash}p{3.2cm}|>{\centering\arraybackslash}p{3.2cm}|}
+\hline
+\textbf{Item} & \textbf{Monolítica} & \textbf{Microsserviços} \\ \hline
+Projetos (aplicações) & 1 & 7 \\ \hline
+Arquivos Java de produção & 105 & 166 \\ \hline
+Linhas de código Java de produção & 2.286 & 3.483 \\ \hline
+Arquivos e linhas de código de teste & 12 e 771 & 23 e 952 \\ \hline
+Testes automatizados & 52 & 66 \\ \hline
+Dependências declaradas nos arquivos \textit{pom.xml} & 14 & 70 \\ \hline
+Arquivos de configuração e linhas (\textit{pom.xml}, \textit{application.yml}, \textit{Dockerfile}) & 4 e 173 & 28 e 1.079 \\ \hline
+Arquivos e linhas de código de comunicação entre componentes & 3 e 112 & 34 e 619 \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). As linhas não incluem linhas em branco.}
+\end{table}
+
+A versão em microsserviços tem 52\% mais linhas de código Java, cinco vezes mais dependências
+declaradas e cerca de seis vezes mais linhas de configuração. O código dedicado à comunicação
+entre componentes ilustra a complexidade introduzida pela distribuição: são 34 arquivos e 619
+linhas, contra 3 arquivos e 112 linhas no monólito, onde essa comunicação se resume ao evento
+interno de pagamento atualizado e ao seu \textit{listener}. Além disso, cada um dos sete
+projetos tem suas próprias dependências, versões e configurações, o que, durante o
+desenvolvimento, exigiu alinhar manualmente as versões do Spring Boot entre os serviços para que
+todos utilizassem a mesma versão do monólito.
+
+O tempo de construção, apresentado na seção seguinte, também afeta o desenvolvimento, já que
+cada alteração precisa ser compilada e empacotada antes de ser testada.
+
 \section{Implantação}
+
+A Tabela~\ref{tab:implantacao} apresenta as medições relacionadas à implantação. Os tempos de
+construção correspondem à geração das imagens Docker sem reaproveitamento de camadas, em três
+repetições, e os tempos de inicialização foram medidos nas seis subidas do ambiente realizadas
+durante a calibração, três para cada arquitetura, desde o comando de subida até que todas as
+aplicações respondessem.
+
+\begin{table}[htbp]
+\centering
+\caption{Medições de implantação}
+\label{tab:implantacao}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{7.4cm}|>{\centering\arraybackslash}p{3.2cm}|>{\centering\arraybackslash}p{3.2cm}|}
+\hline
+\textbf{Item} & \textbf{Monolítica} & \textbf{Microsserviços} \\ \hline
+Imagens das aplicações & 1 & 7 \\ \hline
+Contêineres em execução (aplicações e infraestrutura) & 3 & 11 \\ \hline
+Tamanho das imagens & 593 MB & 480 a 610 MB cada; 3,9 GB no total \\ \hline
+Espaço em disco, descontada a imagem base compartilhada (402 MB) & 191 MB & 1,1 GB \\ \hline
+Tempo médio de construção das imagens & 52 s & 72 s \\ \hline
+Tempo médio de inicialização do Spring Boot (aplicação mais lenta) & 8,8 s & 36,9 s \\ \hline
+Tempo médio até todas as aplicações estarem prontas & 19 s & 76 s \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). A contagem de contêineres não inclui o simulador do Mercado Pago, utilizado apenas nos testes.}
+\end{table}
+
+A versão em microsserviços exige sete imagens e onze contêineres, contra uma imagem e três
+contêineres do monólito, já que, além das aplicações, precisa do Kafka e do Zookeeper. A
+inicialização completa levou, em média, quatro vezes mais tempo. Parte dessa diferença decorre
+da divisão do orçamento de CPU: cada serviço inicializa com no máximo 0,5 ou 0,75 CPU, enquanto o
+monólito dispõe das 4 CPUs, e os serviços que dependem do Kafka aguardam o \textit{broker} estar
+pronto.
 
 \section{Discussão}
 

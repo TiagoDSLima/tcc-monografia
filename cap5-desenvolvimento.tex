@@ -3,16 +3,296 @@
 
 \section{Considerações Iniciais}
 
+Este capítulo descreve o desenvolvimento das duas versões da aplicação de \textit{e-commerce}
+utilizadas na comparação. São apresentados a visão geral da aplicação, a modelagem do domínio,
+a implementação em microsserviços, a implementação monolítica, as diferenças entre as duas
+versões e a validação funcional que confirma que ambas se comportam da mesma forma. A versão em
+microsserviços foi desenvolvida primeiro, e a versão monolítica foi construída a partir dela,
+reunindo as mesmas regras de negócio em uma única aplicação.
+
 \section{Visão Geral da Aplicação de E-commerce}
+
+A aplicação representa uma loja virtual de pequeno porte. O administrador cadastra os produtos,
+com imagem, preço, estoque e variações de tamanho e cor, personaliza a aparência da loja e
+configura o \textit{token} de acesso ao Mercado Pago. O cliente se cadastra, navega pelo
+catálogo e realiza pedidos, pagos por PIX ou por cartão de crédito ou de débito. Quando o
+Mercado Pago confirma o pagamento, o pedido é atualizado e o estoque dos produtos é baixado.
+
+As funcionalidades foram organizadas em seis domínios, que correspondem aos serviços da versão
+distribuída e aos módulos da versão monolítica: autenticação (Auth), participantes, produtos,
+loja, pedidos e pagamentos. A Tabela~\ref{tab:rotas} apresenta as rotas expostas pela
+aplicação, que são exatamente as mesmas nas duas versões.
+
+\begin{table}[htbp]
+\centering
+\caption{Rotas expostas pela aplicação}
+\label{tab:rotas}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{1.8cm}|>{\raggedright\arraybackslash}p{6.0cm}|>{\raggedright\arraybackslash}p{2.6cm}|>{\raggedright\arraybackslash}p{4.2cm}|}
+\hline
+\textbf{Método} & \textbf{Rota} & \textbf{Domínio} & \textbf{Acesso} \\ \hline
+POST & /auth/register, /auth/login & Auth & Público \\ \hline
+POST & /auth/token/servico & Auth & Interno (entre serviços) \\ \hline
+GET & /participante, /participante/\{id\} & Participante & Administrador \\ \hline
+GET & /participante/usuario/\{idUsuario\} & Participante & Autenticado \\ \hline
+GET & /produto/buscaTodos, /produto/buscaTodosComEstoque, /produto/busca/\{id\}, /produto/buscaIds & Produto & Público \\ \hline
+POST, PUT & /produto & Produto & Administrador \\ \hline
+DELETE & /produto/\{id\} & Produto & Administrador \\ \hline
+GET & /loja & Loja & Público \\ \hline
+PUT & /loja, /loja/mercadopago-token & Loja & Administrador \\ \hline
+GET & /loja/mercadopago-token & Loja & Interno (entre serviços) \\ \hline
+POST & /pedido & Pedido & Cliente ou administrador \\ \hline
+POST & /pagamento & Pagamento & Interno (entre serviços) \\ \hline
+POST & /webhook/mercadopago & Pagamento & Público (Mercado Pago) \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+As rotas marcadas como internas existem apenas para a comunicação entre os serviços da versão
+distribuída e são bloqueadas para acesso externo nas duas versões, de modo que um cliente
+recebe a mesma resposta, com \textit{status} 401 sem autenticação ou 403 com autenticação,
+independentemente da arquitetura.
 
 \section{Modelagem do Domínio}
 
+A Figura~\ref{fig:dominio} apresenta as entidades do domínio e seus relacionamentos. O usuário
+guarda as credenciais e o perfil de acesso, enquanto o participante guarda os dados pessoais do
+cliente, como nome, CPF e data de nascimento. O produto possui variações opcionais, cada uma com
+seu próprio estoque. O pedido é composto por itens, por um endereço de entrega e por um
+pagamento, que registra o meio de pagamento, o valor, o \textit{status} e o identificador do
+pagamento no Mercado Pago. A loja guarda as cores, o logotipo e o \textit{token} do Mercado
+Pago.
+
+\begin{figure}[htbp]
+\centering
+\caption{Entidades do domínio e seus relacionamentos}
+\label{fig:dominio}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    entidade/.style={draw, rounded corners=2pt, minimum width=2.8cm, minimum height=0.9cm, fill=gray!10, font=\small, align=center},
+    forte/.style={thick},
+    fraca/.style={thick, dashed},
+    rot/.style={font=\footnotesize, fill=white, inner sep=1pt}
+]
+\node[entidade] (usuario) at (0,0) {Usuário};
+\node[entidade] (participante) at (0,-2.4) {Participante};
+\node[entidade] (pedido) at (5,-2.4) {Pedido};
+\node[entidade] (endereco) at (5,-4.8) {Endereço do pedido};
+\node[entidade] (item) at (9.6,-2.4) {Item do pedido};
+\node[entidade] (pagamento) at (5,0) {Pagamento};
+\node[entidade] (produto) at (14.2,-2.4) {Produto};
+\node[entidade] (variacao) at (14.2,-4.8) {Variação do produto};
+\node[entidade] (loja) at (14.2,0) {Loja};
+
+\draw[fraca] (usuario) -- node[rot] {1 : 1} (participante);
+\draw[fraca] (participante) -- node[rot] {1 : N} (pedido);
+\draw[forte] (pedido) -- node[rot] {1 : 1} (endereco);
+\draw[forte] (pedido) -- node[rot] {1 : N} (item);
+\draw[fraca] (pedido) -- node[rot] {1 : 1} (pagamento);
+\draw[fraca] (item) -- node[rot] {N : 1} (produto);
+\draw[fraca] (item.south) |- node[rot, pos=0.75] {N : 0..1} (variacao.west);
+\draw[forte] (produto) -- node[rot] {1 : N} (variacao);
+
+\draw[forte] (0,-6.2) -- ++(1.2,0) node[right, font=\footnotesize] {chave estrangeira nas duas versões};
+\draw[fraca] (7.2,-6.2) -- ++(1.2,0) node[right, font=\footnotesize] {referência por identificador entre serviços diferentes};
+\end{tikzpicture}%
+}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{figure}
+
+Os relacionamentos representados por linhas tracejadas ligam entidades que pertencem a
+domínios diferentes. Na versão em microsserviços, essas entidades ficam em bancos de dados
+distintos, e o relacionamento é mantido apenas pelo identificador, sem chave estrangeira: o
+pagamento, por exemplo, guarda o identificador do pedido, mas o banco de pagamentos não conhece a
+tabela de pedidos. Para manter as duas versões equivalentes, o mesmo modelo foi adotado no
+monólito, que utiliza um único banco de dados com as mesmas tabelas.
+
 \section{Implementação em Microsserviços}
+
+A versão em microsserviços é composta por sete aplicações Spring Boot independentes: o
+\textit{API Gateway} e os seis serviços de domínio. Cada serviço de domínio possui seu próprio
+banco de dados no PostgreSQL e é construído, configurado e executado separadamente. A
+Tabela~\ref{tab:servicos} apresenta os serviços e suas responsabilidades.
+
+\begin{table}[htbp]
+\centering
+\caption{Serviços da versão em microsserviços}
+\label{tab:servicos}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.6cm}|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{8.4cm}|}
+\hline
+\textbf{Serviço} & \textbf{Banco de dados} & \textbf{Responsabilidades} \\ \hline
+\textit{API Gateway} & Nenhum & Ponto único de entrada: valida o JWT, bloqueia as rotas internas e encaminha cada requisição ao serviço responsável \\ \hline
+Auth & ecommerceauth & Cadastro e \textit{login} de usuários, emissão dos \textit{tokens} JWT dos usuários e dos \textit{tokens} de serviço \\ \hline
+Participante & ecommerce\-participante & Dados pessoais dos clientes, criados a partir do evento de usuário cadastrado \\ \hline
+Produto & ecommerceproduto & Catálogo, variações, imagens no MinIO e baixa de estoque a partir do evento de produtos vendidos \\ \hline
+Loja & ecommerceloja & Personalização da loja e guarda do \textit{token} do Mercado Pago \\ \hline
+Pedido & ecommercepedido & Validação e registro dos pedidos, solicitação do pagamento e atualização do \textit{status} a partir do evento de pagamento atualizado \\ \hline
+Pagamento & ecommerce\-pagamento & Integração com o Mercado Pago, registro dos pagamentos e recebimento das notificações (\textit{webhook}) \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+A Figura~\ref{fig:comunicacao-ms} mostra como os serviços se comunicam. As linhas contínuas
+representam chamadas síncronas por HTTP, feitas com o Spring Cloud OpenFeign, e as linhas
+tracejadas representam eventos publicados em tópicos do Apache Kafka.
+
+\begin{figure}[htbp]
+\centering
+\caption{Comunicação entre os serviços na versão em microsserviços}
+\label{fig:comunicacao-ms}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+    servico/.style={draw, rounded corners=2pt, minimum width=2.6cm, minimum height=0.9cm, fill=gray!10, font=\small, align=center},
+    sinc/.style={-{Stealth[length=2.2mm]}, thick},
+    assinc/.style={-{Stealth[length=2.2mm]}, thick, dashed},
+    rot/.style={font=\footnotesize, fill=white, inner sep=1pt, align=center}
+]
+\node[servico, fill=white] (cliente) at (6,3.2) {Cliente};
+\node[servico, fill=gray!30] (gw) at (6,1.6) {\textit{API Gateway}};
+\node[servico] (auth) at (0,-1) {Auth};
+\node[servico] (part) at (0,-4.4) {Participante};
+\node[servico] (pedido) at (6,-1) {Pedido};
+\node[servico] (produto) at (6,-4.4) {Produto};
+\node[servico] (pag) at (12,-1) {Pagamento};
+\node[servico] (loja) at (12,-4.4) {Loja};
+\node[servico, fill=white] (mp) at (16.2,-1) {Mercado Pago};
+
+\draw[sinc] (cliente) -- (gw);
+\draw[sinc] (gw) -- node[rot, left, pos=0.2] {todas as rotas} (pedido);
+\draw[sinc] (pedido) -- node[rot, left, pos=0.35] {produtos} (produto);
+\draw[sinc] (pedido) -- node[rot, above, sloped] {participante} (part);
+\draw[sinc] (pedido) -- node[rot, above] {pagamento} (pag);
+\draw[sinc] (pag) -- node[rot, right] {\textit{token} MP} (loja);
+\draw[sinc] (pag) -- node[rot, above] {HTTPS} (mp);
+\draw[sinc] ([yshift=0.25cm]pedido.west) -- node[rot, above] {\textit{token} de serviço} ([yshift=0.25cm]auth.east);
+\draw[sinc] (pag.north) -- ++(0,0.9) -| node[rot, pos=0.12, above] {\textit{token} de serviço} (auth.north);
+
+\draw[assinc] (auth) -- node[rot, left] {usuarios-\\criados} (part);
+\draw[assinc] ([yshift=-0.25cm]pag.west) -- node[rot, below=3pt] {pagamentos-atualizados} ([yshift=-0.25cm]pedido.east);
+\draw[assinc] ([xshift=0.5cm]pedido.south) -- node[rot, right, pos=0.6] {produtos-\\vendidos} ([xshift=0.5cm]produto.north);
+\end{tikzpicture}%
+}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). O \textit{gateway} encaminha as requisições a todos os serviços; para simplificar, apenas a ligação com o serviço de pedidos foi representada.}
+\end{figure}
+
+A realização de um pedido ilustra a interação entre os serviços. Ao receber a requisição, o
+serviço de pedidos consulta o serviço de participantes para obter os dados do cliente e o
+serviço de produtos para obter os preços, as descrições e o estoque disponível. Em seguida,
+solicita o pagamento ao serviço de pagamentos, que busca o \textit{token} do Mercado Pago no
+serviço de loja e cria o pagamento na API do Mercado Pago. Se o pagamento for recusado, o pedido
+não é gravado e o erro é repassado ao cliente. Quando o Mercado Pago envia a notificação de
+pagamento aprovado, o serviço de pagamentos consulta o pagamento, atualiza seu \textit{status} e
+publica um evento no tópico \textit{pagamentos-atualizados}. O serviço de pedidos consome esse
+evento, atualiza o pedido e publica no tópico \textit{produtos-vendidos} os itens vendidos, que
+o serviço de produtos consome para baixar o estoque. Da mesma forma, o cadastro de um usuário no
+serviço Auth gera um evento no tópico \textit{usuarios-criados}, a partir do qual o serviço de
+participantes cria o registro com os dados pessoais.
+
+A distribuição exigiu mecanismos que não existiriam em uma aplicação única. O primeiro é a
+autenticação entre serviços: algumas rotas, como a de criação de pagamentos e a de consulta do
+\textit{token} do Mercado Pago, só podem ser chamadas por outros serviços. Para isso, os serviços
+de pedidos e de pagamentos obtêm no serviço Auth um \textit{token} de serviço, emitido a partir
+de um identificador e de um segredo próprios de cada cliente, e o guardam até perto do seu
+vencimento. O segundo é o repasse do \textit{token} do usuário nas chamadas em que o serviço
+chamado precisa saber quem é o cliente, como a consulta do participante. O terceiro é a
+duplicação de modelos: cada serviço que consome dados de outro mantém suas próprias classes de
+representação desses dados, como o serviço de pedidos, que possui sua própria representação de
+produto e de participante. Por fim, o \textit{API Gateway} concentra a validação do JWT e o
+bloqueio das rotas internas, enquanto cada serviço também valida o \textit{token} recebido.
 
 \section{Implementação Monolítica}
 
+A versão monolítica é uma única aplicação Spring Boot, com um único banco de dados no PostgreSQL
+e um único artefato de implantação. O código foi organizado em pacotes por domínio
+(\textit{auth}, \textit{participante}, \textit{produto}, \textit{loja}, \textit{pedido} e
+\textit{pagamento}), cada um com sua própria estrutura interna de controladores, serviços,
+repositórios e objetos de transferência de dados, preservando a mesma divisão de
+responsabilidades da versão distribuída. As configurações comuns, como a segurança e o acesso ao
+MinIO, ficam em um pacote compartilhado.
+
+Nessa versão, os módulos se comunicam por chamadas diretas de método. O serviço de pedidos chama
+os serviços de participantes, de produtos e de pagamentos como dependências comuns, injetadas
+pelo Spring, e o serviço de autenticação cria o participante diretamente durante o cadastro do
+usuário. Com isso, deixam de existir o \textit{API Gateway}, os clientes HTTP, os
+\textit{tokens} de serviço e as classes de representação duplicadas. A atualização do pedido
+após a confirmação do pagamento foi mantida desacoplada por meio de um evento interno do Spring
+(\textit{ApplicationEventPublisher}): o módulo de pagamentos publica o evento de pagamento
+atualizado, e um \textit{listener} do módulo de pedidos atualiza o pedido e baixa o estoque.
+Diferentemente do Kafka, esse evento é processado de forma síncrona, dentro da mesma requisição.
+
+As rotas internas da versão distribuída, que no monólito não são necessárias, foram mantidas
+bloqueadas, de modo que as respostas recebidas por um cliente externo sejam as mesmas nas duas
+versões.
+
 \section{Diferenças entre as Implementações}
+
+A Tabela~\ref{tab:diferencas} resume as principais diferenças de implementação entre as duas
+versões, considerando os mesmos requisitos e as mesmas regras de negócio.
+
+\begin{table}[htbp]
+\centering
+\caption{Diferenças de implementação entre as versões}
+\label{tab:diferencas}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.4cm}|>{\raggedright\arraybackslash}p{5.6cm}|>{\raggedright\arraybackslash}p{5.6cm}|}
+\hline
+\textbf{Aspecto} & \textbf{Microsserviços} & \textbf{Monolítica} \\ \hline
+Unidades de implantação & Sete aplicações e sete imagens Docker & Uma aplicação e uma imagem Docker \\ \hline
+Banco de dados & Um banco por serviço, sem chaves estrangeiras entre domínios & Um único banco, com as mesmas tabelas \\ \hline
+Ponto de entrada & \textit{API Gateway} & A própria aplicação \\ \hline
+Comunicação síncrona & HTTP com OpenFeign & Chamadas diretas de método \\ \hline
+Comunicação assíncrona & Apache Kafka (três tópicos) & Eventos internos do Spring, processados na mesma requisição \\ \hline
+Autenticação entre componentes & \textit{Tokens} de serviço emitidos pelo Auth & Desnecessária \\ \hline
+Consistência após o pagamento & Eventual: pedido e estoque são atualizados após o consumo dos eventos & Imediata: tudo é atualizado antes da resposta ao \textit{webhook} \\ \hline
+Infraestrutura adicional & Kafka e Zookeeper & Nenhuma \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+A diferença de consistência merece destaque. Na versão distribuída, a resposta à notificação do
+Mercado Pago é enviada assim que o evento é publicado, e o pedido e o estoque são atualizados
+alguns instantes depois, quando os eventos são consumidos. No monólito, o pedido e o estoque já
+estão atualizados quando a resposta é enviada. Para quem utiliza a aplicação, o resultado final
+é o mesmo, mas o tempo de resposta da notificação nas duas versões mede trabalhos diferentes.
 
 \section{Validação Funcional}
 
+A equivalência funcional das duas versões foi verificada por quatro conjuntos de testes,
+apresentados na Tabela~\ref{tab:validacao}. Os testes unitários verificam as regras de negócio
+de cada versão isoladamente. Os demais acessam as aplicações apenas pelas rotas HTTP e são
+executados sem alteração contra as duas versões, comparando o código de \textit{status} e o
+corpo de cada resposta.
+
+\begin{table}[htbp]
+\centering
+\caption{Resultado da validação funcional}
+\label{tab:validacao}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{5.4cm}|>{\centering\arraybackslash}p{2.8cm}|>{\centering\arraybackslash}p{2.8cm}|}
+\hline
+\textbf{Conjunto} & \textbf{O que verifica} & \textbf{Microsserviços} & \textbf{Monolítica} \\ \hline
+Testes unitários & Regras de negócio, segurança e conversões de cada versão & 66 de 66 & 52 de 52 \\ \hline
+Teste funcional & Todas as rotas, incluindo erros de autenticação, de validação, de estoque e do Mercado Pago & 62 de 62 & 62 de 62 \\ \hline
+Cenários comparativos & 24 cenários de uso, com comparação das respostas entre as versões & \multicolumn{2}{c|}{24 respostas idênticas} \\ \hline
+Notificações do Mercado Pago & 8 formatos de notificação recebidos pelo \textit{webhook} & \multicolumn{2}{c|}{8 respostas idênticas} \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026).}
+\end{table}
+
+O fluxo assíncrono também foi verificado nas duas versões: após a notificação de pagamento
+aprovado, o pedido passou a constar como aprovado e o estoque dos produtos foi baixado. Durante
+o desenvolvimento, essas verificações revelaram diferenças que foram corrigidas, como uma rota
+interna que, no monólito, respondia com código diferente do retornado pelo \textit{gateway} da
+versão distribuída. Os testes foram executados novamente após a última alteração do código,
+com o Spring Boot 3.5.13 em todas as aplicações, sem nenhuma divergência entre as versões.
+
 \section{Considerações Finais}
+
+Este capítulo apresentou as duas versões da aplicação de \textit{e-commerce}. Ambas implementam
+os mesmos seis domínios, as mesmas rotas e as mesmas regras de negócio, e a sua equivalência foi
+confirmada por testes automatizados. As diferenças se concentram na organização interna: a
+versão em microsserviços exigiu um \textit{API Gateway}, bancos de dados separados, comunicação
+por HTTP e por mensagens, autenticação entre serviços e duplicação de modelos, enquanto a versão
+monolítica resolve as mesmas interações com chamadas diretas e eventos internos. O próximo
+capítulo apresenta os resultados da comparação entre as duas versões.

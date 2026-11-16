@@ -415,6 +415,12 @@ identificadas as seguintes ameaças:
     tende a ser reduzido;
     \item \textbf{Simulação do pagamento:} o atraso fixo do simulador não reproduz a
     variabilidade do serviço real do Mercado Pago;
+    \item \textbf{Configurações padrão:} as aplicações utilizam as configurações padrão do Spring
+    Boot, como o \textit{pool} de dez conexões com o banco de dados por aplicação. Como o
+    monólito tem um único \textit{pool} e cada microsserviço tem o seu, essas configurações
+    podem limitar as arquiteturas de formas diferentes. Elas foram mantidas iguais por
+    aplicação para não favorecer nenhuma das versões, e os seus efeitos são discutidos nos
+    resultados;
     \item \textbf{Divisão dos recursos:} a forma como o orçamento é dividido entre os
     microsserviços influencia o desempenho dessa arquitetura. Por isso, a divisão é
     registrada junto com os resultados e avaliada nos testes de escalabilidade;
