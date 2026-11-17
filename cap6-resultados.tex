@@ -6,8 +6,9 @@
 Este capítulo apresenta os resultados da comparação entre as duas versões da aplicação, de
 acordo com os critérios definidos no Capítulo~\ref{cap:metodologia}: as métricas de código, que
 fundamentam a análise da manutenibilidade e da complexidade de desenvolvimento, as medições de
-implantação e os resultados da calibração, uma execução única do teste de estresse em cada
-cenário, realizada para definir as taxas dos testes de carga.
+implantação, os resultados da calibração, uma execução única do teste de estresse em cada
+cenário, realizada para definir as taxas dos testes de carga, e os resultados dos testes de
+escalabilidade, com cinco repetições de cada configuração.
 
 \section{Desempenho}
 
@@ -93,6 +94,114 @@ memória decorre principalmente de cada serviço executar sua própria máquina 
 trabalho adicional de serialização, transmissão e validação das requisições entre os serviços.
 
 \section{Escalabilidade}
+
+Os testes de escalabilidade utilizaram o teste de estresse do cenário misto, com oito degraus
+de trinta segundos, repetido cinco vezes para cada configuração, alternando a ordem das
+arquiteturas. Em todas as configurações, considera-se como vazão máxima sustentada a taxa do
+último degrau em que o percentil 95 do tempo de resposta permaneceu abaixo de um segundo e a
+taxa de erros abaixo de 1\%. Como a taxa aumenta em degraus, a vazão real de saturação está entre
+o valor informado e o degrau seguinte, que é 50 iterações por segundo maior nos testes com taxa
+máxima de 400 e 75 maior nos testes com taxa máxima de 600.
+
+\subsection{Escalabilidade Vertical}
+
+A Tabela~\ref{tab:escala-vertical} apresenta os resultados com orçamentos de 2, 4 e 8 CPUs para a
+camada de aplicação, mantendo a memória em 4 GB. Nos microsserviços, o orçamento é dividido
+entre os serviços na mesma proporção utilizada no orçamento padrão.
+
+\begin{table}[htbp]
+\centering
+\caption{Escalabilidade vertical no cenário misto}
+\label{tab:escala-vertical}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.6cm}|>{\centering\arraybackslash}p{1.4cm}|>{\centering\arraybackslash}p{2.3cm}|>{\centering\arraybackslash}p{2.0cm}|>{\centering\arraybackslash}p{2.0cm}|>{\centering\arraybackslash}p{2.7cm}|}
+\hline
+\textbf{Arquitetura} & \textbf{CPUs} & \textbf{Vazão sustentada (it/s)} & \textbf{CPU média (núcleos)} & \textbf{Memória máxima (MB)} & \textbf{Inicialização (s)} \\ \hline
+\multirow{3}{*}{Monolítica} & 2 & 200 & 0,61 & 600 & 18 \\ \cline{2-6}
+ & 4 & 200 & 0,61 & 681 & 17 \\ \cline{2-6}
+ & 8 & 225 & 0,61 & 830 & 16 \\ \hline
+\multirow{3}{*}{Microsserviços} & 2 & $<$ 50 & 1,10 & 2.705 & 107 \\ \cline{2-6}
+ & 4 & 150 & 2,14 & 2.578 & 73 \\ \cline{2-6}
+ & 8 & 225 & 3,08 & 2.639 & 57 \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). A vazão sustentada foi a mesma nas cinco repetições de cada configuração. CPU média e memória máxima referem-se à camada de aplicação durante todo o teste; a inicialização é o tempo até todas as aplicações estarem prontas.}
+\end{table}
+
+O monólito praticamente não se beneficiou do aumento de processadores. Com 2 CPUs, sustentou as
+mesmas 200 iterações por segundo obtidas com 4 CPUs e, com 8 CPUs, chegou a 225, um ganho de
+12,5\% para o dobro de recursos, o que corresponde a uma eficiência de 0,56. O consumo médio de
+CPU foi de 0,61 núcleo nos três orçamentos, e o percentil 90 das amostras ficou em torno de
+0,95 núcleo, de modo que a capacidade de processamento adicional permaneceu ociosa. Esse
+comportamento confirma o que foi observado na calibração: a vazão do monólito no cenário misto é
+limitada pelo \textit{pool} de dez conexões com o banco de dados, ocupadas durante a chamada ao
+Mercado Pago, e esse limite não depende do número de processadores.
+
+Os microsserviços, por outro lado, foram limitados pelo processador em todos os orçamentos. Com
+2 CPUs, cada serviço recebeu entre 0,25 e 0,375 CPU, e a versão não sustentou nem o primeiro
+degrau, de 50 iterações por segundo: o percentil 95 das compras chegou a 12 segundos, com o
+\textit{gateway} e os serviços de produtos, lojas, pedidos e pagamentos operando no limite de CPU
+atribuído. Com 4 CPUs, a vazão sustentada foi de 150 iterações por segundo. Na calibração, que
+utilizou degraus de um minuto, essa configuração havia sustentado 200; nas cinco repetições, o
+degrau de 200 resultou em um percentil 95 médio de 1,4~s, pouco acima do critério, o que situa a
+capacidade dessa configuração entre 150 e 200 iterações por segundo. Com 8 CPUs, a vazão chegou a
+225, um ganho de 50\% em relação a 4 CPUs e eficiência de 0,75. Nesse orçamento, o limite passou a
+ser o \textit{gateway}, que operou no seu teto de 1,5 CPU, enquanto os serviços de pedidos e de
+pagamentos utilizaram cerca de metade da CPU disponível.
+
+Com 8 CPUs, as duas arquiteturas sustentaram a mesma vazão, mas os microsserviços utilizaram, em
+média, cinco vezes mais CPU e três vezes mais memória do que o monólito. A memória dos
+microsserviços variou pouco entre os orçamentos, por ser determinada principalmente pelas sete
+máquinas virtuais Java. O orçamento de CPU também afetou a inicialização: o tempo até todas as
+aplicações estarem prontas caiu de 107 para 57 segundos nos microsserviços, enquanto no monólito
+permaneceu entre 16 e 18 segundos.
+
+\subsection{Escalabilidade Horizontal}
+
+A Tabela~\ref{tab:escala-horizontal} apresenta os resultados com o balanceador de carga Nginx. No
+monólito, a aplicação inteira foi executada em duas instâncias, cada uma com 4 CPUs e 4 GB. Nos
+microsserviços, foram executadas duas instâncias do \textit{gateway} e dos serviços de produtos,
+de pedidos e de pagamentos, que atingiram o limite de CPU na calibração do cenário misto, cada
+instância com os mesmos limites da instância original. A eficiência é a razão entre o ganho de
+vazão e o aumento do orçamento de CPU da camada de aplicação em relação à referência.
+
+\begin{table}[htbp]
+\centering
+\caption{Escalabilidade horizontal no cenário misto}
+\label{tab:escala-horizontal}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{2.5cm}|>{\raggedright\arraybackslash}p{2.0cm}|>{\centering\arraybackslash}p{1.2cm}|>{\centering\arraybackslash}p{2.3cm}|>{\centering\arraybackslash}p{1.8cm}|>{\centering\arraybackslash}p{1.8cm}|>{\centering\arraybackslash}p{1.9cm}|}
+\hline
+\textbf{Arquitetura} & \textbf{Instâncias} & \textbf{CPUs} & \textbf{Vazão sustentada (it/s)} & \textbf{CPU média (núcleos)} & \textbf{Memória máxima (MB)} & \textbf{Eficiência} \\ \hline
+\multirow{2}{*}{Monolítica} & 1 (referência) & 4 & 200 & 0,62 & 701 & -- \\ \cline{2-7}
+ & 2 & 8 & 405\newline(354 a 456) & 1,32 & 1.388 & 1,01 \\ \hline
+\multirow{2}{*}{Microsserviços} & 1 de cada (referência) & 4 & 150 & 2,16 & 2.586 & -- \\ \cline{2-7}
+ & 2 de quatro serviços & 6,5 & 225 & 3,78 & 4.107 & 0,92 \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). Entre parênteses, o intervalo de confiança de 95\% da média das cinco repetições; nas demais configurações, a vazão sustentada foi a mesma em todas as repetições.}
+\end{table}
+
+As execuções de referência sustentaram a mesma vazão das execuções sem balanceador, 200
+iterações por segundo no monólito e 150 nos microsserviços, e o percentil 95 no primeiro degrau
+variou de 109 para 110~ms no monólito e de 130 para 142~ms nos microsserviços. O custo do
+balanceador foi maior nos microsserviços porque, nessa configuração, as chamadas entre os serviços
+também passam por ele.
+
+O monólito foi a arquitetura que mais se beneficiou da replicação. Com duas instâncias, a vazão
+sustentada passou para uma média de 405 iterações por segundo, variando entre 375 e 450 nas cinco
+repetições, o dobro da referência, com eficiência de 1,01. Diferentemente do aumento de
+processadores, a replicação duplica também o \textit{pool} de conexões, já que cada instância
+mantém o seu, o que remove o limite que restringia a escalabilidade vertical. Mesmo com o dobro da
+carga, o uso de CPU da camada de aplicação permaneceu abaixo de um terço do orçamento, e o do banco
+de dados ficou em torno de 1 das 2 CPUs disponíveis.
+
+Nos microsserviços, a replicação de quatro serviços elevou a vazão de 150 para 225 iterações por
+segundo, um ganho de 50\% para um aumento de 62,5\% no orçamento de CPU, com eficiência de 0,92.
+A vazão foi a mesma obtida com 8 CPUs na escalabilidade vertical, utilizando 6,5 CPUs. Com as
+réplicas, o \textit{gateway} e o serviço de pagamentos voltaram a operar no limite de CPU das duas
+instâncias, e o serviço de lojas, que não foi replicado, também atingiu o seu limite de 0,5 CPU.
+O aumento de memória foi de 1,5 GB, equivalente às quatro novas máquinas virtuais Java, e o tempo
+até todas as aplicações estarem prontas passou de 77 para 85 segundos nos microsserviços e de 16
+para 19 segundos no monólito.
 
 \section{Manutenibilidade}
 

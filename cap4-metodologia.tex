@@ -309,8 +309,9 @@ independentemente do tempo de resposta da aplicação; esse modelo, chamado de a
 uma aplicação mais lenta receba menos requisições e mascare a sua lentidão. As taxas
 utilizadas são as mesmas para as duas arquiteturas e são definidas a partir de um teste
 preliminar, de modo a representar cargas baixa, média e alta. No teste de estresse, a taxa é
-aumentada em oito degraus de um minuto até um valor máximo, com o objetivo de encontrar o ponto
-de saturação de cada arquitetura.
+aumentada em oito degraus iguais até um valor máximo, com o objetivo de encontrar o ponto de
+saturação de cada arquitetura. Cada degrau dura um minuto no teste preliminar e trinta segundos
+nas execuções repetidas, o que reduz a duração total dos testes sem alterar o número de degraus.
 
 A máquina virtual Java compila e otimiza o código durante a execução, de modo que as primeiras
 requisições são mais lentas do que as seguintes. Por isso, antes de cada medição, é executado
