@@ -8,6 +8,24 @@ microservices architecture}. 2026. Monografia (Graduação em Ciência da Comput
 \normalsize \vspace{1cm} \onehalfspacing
 
 \begin{otherlanguage}{english}
+\noindent Choosing between the monolithic and the microservices architectures is one of the
+most relevant decisions in Web application development, and the studies that compare both
+approaches report divergent results. This work compared the two architectures through two
+functionally equivalent versions of an e-commerce application, developed in Java with Spring
+Boot, featuring authentication, product catalog, orders, payments integrated with Mercado Pago,
+file storage and asynchronous communication with Kafka. Both versions were executed in Docker
+containers with the same resource budget and evaluated regarding performance, scalability,
+maintainability, development complexity and deployment, using load and stress tests generated
+by k6 and repeated five times. The monolithic version showed lower response times in all
+scenarios, sustained 200 iterations per second in the mixed scenario, against 150 for the
+microservices, consumed less CPU and about four times less memory and started 4.5 times
+faster. With two instances behind a load balancer, the monolith doubled its throughput. The
+microservices version provided fault isolation between the catalog and the purchase flow and
+allowed scaling only the most demanded services, but required about 50\% more code and its
+capacity was limited by the share of resources assigned to each service. It is concluded that, for small to
+medium applications developed by small teams with limited resources, the monolithic
+architecture is more advantageous, while the benefits of microservices depend on a context with
+multiple teams and an infrastructure able to scale each service independently.
 
 \vfill%
 \noindent Keywords: Software architecture. Microservices. Monolithic architecture. E-commerce.

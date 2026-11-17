@@ -7,6 +7,26 @@ arquitetura de microsserviços}. 2026. Monografia (Graduação em Ciência da Co
 
 \normalsize \vspace{1cm} \onehalfspacing
 
+\noindent A escolha entre as arquiteturas monolítica e de microsserviços é uma das decisões
+mais relevantes no desenvolvimento de aplicações Web, e os estudos que comparam as duas
+abordagens apresentam resultados divergentes. Este trabalho comparou as duas arquiteturas por
+meio de duas versões funcionalmente equivalentes de uma aplicação de \textit{e-commerce},
+desenvolvidas em Java com o Spring Boot, com autenticação, catálogo de produtos, pedidos,
+pagamentos integrados ao Mercado Pago, armazenamento de arquivos e comunicação assíncrona com o
+Kafka. As versões foram executadas em contêineres Docker, com o mesmo orçamento de recursos, e
+avaliadas quanto ao desempenho, à escalabilidade, à manutenibilidade, à complexidade de
+desenvolvimento e à implantação, com testes de carga e de estresse gerados pelo k6 e repetidos
+cinco vezes. A versão monolítica apresentou menor tempo de resposta em todos os cenários,
+sustentou 200 iterações por segundo no cenário misto, contra 150 dos microsserviços, consumiu
+menos processador e cerca de quatro vezes menos memória e inicializou 4,5 vezes mais rápido.
+Com duas instâncias atrás de um balanceador de carga, o monólito dobrou a sua vazão. A versão em
+microsserviços apresentou isolamento de falhas entre o catálogo e o fluxo de compra e permitiu
+escalar apenas os serviços mais demandados, mas exigiu cerca de 50\% mais código e teve a sua
+capacidade limitada pela fração de recursos atribuída a cada serviço. Conclui-se que, para
+aplicações de porte pequeno a médio, desenvolvidas por equipes pequenas e com recursos
+limitados, a arquitetura monolítica é mais vantajosa, enquanto os benefícios dos microsserviços
+dependem de um contexto com várias equipes e infraestrutura capaz de escalar cada serviço de
+forma independente.
 
 \vfill%
 \noindent Palavras-chave: Arquitetura de software. Microsserviços. Arquitetura monolítica. E-commerce.

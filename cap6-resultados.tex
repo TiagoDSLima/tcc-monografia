@@ -4,13 +4,23 @@
 \section{Considerações Iniciais}
 
 Este capítulo apresenta os resultados da comparação entre as duas versões da aplicação, de
-acordo com os critérios definidos no Capítulo~\ref{cap:metodologia}: as métricas de código, que
-fundamentam a análise da manutenibilidade e da complexidade de desenvolvimento, as medições de
-implantação, os resultados da calibração, uma execução única do teste de estresse em cada
-cenário, realizada para definir as taxas dos testes de carga, e os resultados dos testes de
-escalabilidade, com cinco repetições de cada configuração.
+acordo com os critérios definidos no Capítulo~\ref{cap:metodologia}. Os testes de desempenho e
+de escalabilidade totalizaram 166 execuções: seis na calibração, uma para cada cenário e
+arquitetura, e 160 nos testes definitivos, com cinco repetições de cada configuração, todas
+concluídas sem falhas de execução. Os critérios de manutenibilidade, complexidade de
+desenvolvimento e implantação foram avaliados a partir das métricas de código, dos repositórios
+e das medições realizadas durante a subida dos ambientes. Ao final, os resultados são
+discutidos em conjunto e comparados com os trabalhos apresentados no
+Capítulo~\ref{cap:estado-arte}.
 
 \section{Desempenho}
+
+O desempenho foi avaliado em duas etapas. Na primeira, a calibração, um teste de estresse de
+cada cenário identificou a capacidade aproximada de cada arquitetura e definiu as taxas dos
+testes de carga. Na segunda, os testes de carga mediram o tempo de resposta das duas
+arquiteturas sob taxas constantes, com cinco repetições.
+
+\subsection{Calibração}
 
 A calibração consistiu em um teste de estresse de cada cenário, com a taxa aumentada em oito
 degraus de um minuto e com o orçamento padrão de 4 CPUs e 4 GB para a camada de aplicação. A
@@ -93,11 +103,154 @@ memória decorre principalmente de cada serviço executar sua própria máquina 
 \textit{framework} e as bibliotecas carregados em memória sete vezes; a diferença de CPU inclui o
 trabalho adicional de serialização, transmissão e validação das requisições entre os serviços.
 
+\subsection{Testes de Carga}
+
+Com base na calibração, cada cenário foi executado em três taxas constantes, de três minutos
+cada, que representam cargas baixa, média e alta: 75, 150 e 250 iterações por segundo no
+catálogo, 5, 10 e 20 na compra e 50, 100 e 175 no misto. A Tabela~\ref{tab:carga} apresenta o
+percentil 95 do tempo de resposta de cada cenário, com o intervalo de confiança de 95\% das
+cinco repetições. No cenário misto, as iterações de catálogo e de compra são apresentadas
+separadamente.
+
+\begin{table}[htbp]
+\centering
+\caption{Percentil 95 do tempo de resposta nos testes de carga (ms)}
+\label{tab:carga}
+\small
+\begin{tabular}{|>{\raggedright\arraybackslash}p{3.0cm}|>{\centering\arraybackslash}p{1.4cm}|>{\centering\arraybackslash}p{4.0cm}|>{\centering\arraybackslash}p{4.8cm}|}
+\hline
+\textbf{Cenário} & \textbf{Taxa (it/s)} & \textbf{Monolítica} & \textbf{Microsserviços} \\ \hline
+\multirow{3}{*}{Catálogo} & 75 & 2,1 (2,1 a 2,2) & 5,0 (4,7 a 5,2) \\ \cline{2-4}
+ & 150 & 2,0 (2,0 a 2,0) & 2.791 (2.274 a 3.307)* \\ \cline{2-4}
+ & 250 & 1,9 (1,9 a 2,0) & 3.529 (3.277 a 3.781)* \\ \hline
+\multirow{3}{*}{Compra} & 5 & 116,9 (116,7 a 117,1) & 149,5 (147,1 a 151,8) \\ \cline{2-4}
+ & 10 & 114,6 (114,4 a 114,9) & 168,8 (152,6 a 185,1) \\ \cline{2-4}
+ & 20 & 112,5 (112,5 a 112,6) & 3.698 (3.159 a 4.237)* \\ \hline
+\multirow{3}{*}{Misto (catálogo)} & 50 & 2,2 (2,2 a 2,3) & 6,7 (5,6 a 7,7) \\ \cline{2-4}
+ & 100 & 2,1 (2,1 a 2,1) & 40,2 (33,3 a 47,0) \\ \cline{2-4}
+ & 175 & 2,1 (2,0 a 2,1) & 1.073 (305 a 1.841)* \\ \hline
+\multirow{3}{*}{Misto (compra)} & 50 & 113,9 (113,7 a 114,0) & 181,9 (171,5 a 192,4) \\ \cline{2-4}
+ & 100 & 112,2 (112,0 a 112,3) & 6.545 (4.405 a 8.684)* \\ \cline{2-4}
+ & 175 & 111,9 (111,6 a 112,1) & 27.857 (17.434 a 38.280)* \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). Entre parênteses, o intervalo de confiança de 95\%. No cenário misto, as taxas correspondem ao total, dividido entre 80\% de iterações de catálogo e 20\% de compra. *Percentil 95 acima de um segundo, indicando saturação.}
+\end{table}
+
+O monólito manteve o mesmo comportamento em todas as taxas: cerca de 2~ms no catálogo e de
+112 a 117~ms na compra, valor determinado principalmente pelo atraso de 100~ms do simulador de
+pagamento. A taxa de erros foi nula em todas as execuções do monólito, e as taxas solicitadas
+foram atendidas integralmente.
+
+Na carga baixa, a versão em microsserviços também atendeu a todas as requisições sem erros, mas
+com tempos de resposta maiores em todos os cenários, com diferenças significativas, já que os
+intervalos de confiança não se sobrepõem. O percentil 95 foi 132\% maior no catálogo e 28\%
+maior na compra, e, no cenário misto, 197\% maior nas iterações de catálogo e 60\% maior nas de
+compra. Em valores absolutos, as diferenças foram de cerca de 3 a 4~ms no catálogo e de 33 a
+68~ms na compra.
+
+Nas cargas média e alta, a versão em microsserviços saturou em cinco das seis configurações. No
+cenário de compra, a saturação com 20 iterações por segundo era esperada, já que a calibração
+havia indicado o limite de 19 para essa arquitetura, imposto pelo processador do serviço de
+pagamentos, que operou no seu teto de 0,5 CPU. Pelo mesmo motivo, o cenário misto saturou a
+partir de 100 iterações por segundo, quando a parcela de compras chegou a 20 por segundo. Nessa
+taxa, enquanto o percentil 95 das compras chegou a 6,5~s, o do catálogo ficou em 40~ms, o que
+confirma o isolamento observado na calibração: a sobrecarga dos serviços de pedidos e de
+pagamentos pouco afetou os serviços consultados pelo catálogo. Com 175 iterações por segundo,
+porém, o próprio catálogo ultrapassou um segundo, e a versão em microsserviços atendeu apenas 24
+das 35 compras por segundo solicitadas, com 0,23\% de erros.
+
+A saturação do catálogo com 150 iterações por segundo, metade da capacidade indicada pela
+calibração, decorreu do serviço de produtos, que operou no seu limite de 0,75 CPU desde o
+início da medição. Com 75 iterações por segundo, o consumo desse serviço se estabilizou em
+0,16 núcleo cerca de 10 segundos após o início da medição. Com 150, em três das cinco
+repetições, o consumo permaneceu no limite por 133 a 158 segundos e então caiu para cerca de
+0,33 núcleo, o dobro do consumo com 75, sem alteração da taxa; nas outras duas, a queda não
+ocorreu dentro dos três minutos do teste. Esse comportamento é compatível com a compilação
+\textit{just-in-time} da máquina virtual Java ainda em andamento: com apenas 0,75 CPU, a
+compilação do código mais executado disputa o processador com o atendimento das requisições, e
+o minuto de aquecimento com metade da taxa não foi suficiente para concluí-la. Enquanto isso, a
+fila de requisições cresce e o serviço permanece saturado mesmo depois que o custo de cada
+requisição diminui. No teste de estresse, o aumento gradual da taxa funciona como um aquecimento
+mais longo, o que explica a capacidade maior observada na calibração. O monólito, com as 4 CPUs
+disponíveis para a compilação, não apresentou esse efeito em nenhuma taxa.
+
+A Tabela~\ref{tab:rotas} apresenta o tempo de resposta por rota na carga baixa, quando nenhuma
+das arquiteturas estava saturada, o que permite identificar o custo da comunicação entre
+componentes em cada operação.
+
+\begin{table}[htbp]
+\centering
+\caption{Tempo de resposta por rota na carga baixa (ms)}
+\label{tab:rotas}
+\footnotesize
+\begin{tabular}{|>{\raggedright\arraybackslash}p{6.2cm}|>{\centering\arraybackslash}p{1.8cm}|>{\centering\arraybackslash}p{1.8cm}|>{\centering\arraybackslash}p{1.8cm}|>{\centering\arraybackslash}p{1.8cm}|}
+\hline
+\multirow{2}{*}{\textbf{Rota}} & \multicolumn{2}{c|}{\textbf{Mediana}} & \multicolumn{2}{c|}{\textbf{Percentil 95}} \\ \cline{2-5}
+ & \textbf{Monolítica} & \textbf{Microsserv.} & \textbf{Monolítica} & \textbf{Microsserv.} \\ \hline
+GET /produto/buscaTodosComEstoque & 1,4 & 2,7 & 1,8 & 4,1 \\ \hline
+GET /produto/busca/\{id\} & 1,7 & 2,9 & 2,4 & 4,6 \\ \hline
+GET /loja & 1,3 & 2,7 & 1,9 & 17,1 \\ \hline
+POST /pedido & 113,1 & 136,0 & 117,7 & 158,7 \\ \hline
+POST /webhook/mercadopago & 111,0 & 115,0 & 114,7 & 121,3 \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). Rotas de consulta medidas no cenário de catálogo com 75 it/s e rotas de compra no cenário de compra com 5 it/s.}
+\end{table}
+
+Nas rotas de consulta, atendidas por um único serviço, a passagem pelo \textit{gateway}
+acrescentou entre 1,2 e 1,5~ms à mediana, praticamente dobrando o tempo de resposta, que no
+monólito é de pouco mais de 1~ms.
+A criação de pedidos foi a rota mais afetada em valor absoluto, com 23~ms a mais na mediana e
+41~ms a mais no percentil 95, porque, nos microsserviços, o serviço de pedidos consulta os
+serviços de participantes e de produtos e solicita o pagamento ao serviço de pagamentos, todos
+por HTTP, além de publicar a baixa de estoque no Kafka. O \textit{webhook} do Mercado Pago, cujo
+processamento posterior ocorre de forma assíncrona, teve um acréscimo de apenas 4~ms na mediana.
+
+Quanto aos recursos, a versão em microsserviços consumiu, na carga baixa, de 2,3 a 3,1 vezes mais
+CPU e cerca de quatro vezes mais memória na camada de aplicação: no catálogo com 75 iterações
+por segundo, por exemplo, foram 0,68 núcleo e 1.869~MB, contra 0,30 núcleo e 480~MB do monólito.
+Por fim, o teste de estresse do cenário misto com o orçamento padrão, executado mais cinco vezes
+nesta etapa, repetiu o resultado obtido nos testes de escalabilidade, apresentados na seção
+seguinte: nas dez execuções, o monólito sustentou 200 iterações por segundo e os microsserviços,
+150. A Figura~\ref{fig:estresse} mostra a evolução do percentil 95 ao longo dos degraus desse
+teste.
+
+\begin{figure}[htbp]
+\centering
+\caption{Percentil 95 do tempo de resposta por degrau no teste de estresse do cenário misto}
+\label{fig:estresse}
+\begin{tikzpicture}
+\begin{semilogyaxis}[
+    width=0.9\textwidth, height=7cm,
+    xlabel={Taxa do degrau (iterações por segundo)},
+    ylabel={Percentil 95 (ms)},
+    xtick={50,100,150,200,250,300,350,400},
+    ymin=50, ymax=40000,
+    legend pos=north west, legend cell align=left,
+    grid=major, grid style={gray!25},
+    tick label style={font=\small}, label style={font=\small}, legend style={font=\small},
+    log basis y=10,
+    yticklabel style={/pgf/number format/fixed, /pgf/number format/1000 sep={.}},
+    log ticks with fixed point,
+]
+\addplot[thick, blue, mark=square*] coordinates {
+    (50,109.8) (100,109.3) (150,109.1) (200,109.1) (250,1668.9) (300,5636.5) (350,11903.8) (400,11443.0)};
+\addlegendentry{Monolítica}
+\addplot[thick, red, mark=triangle*] coordinates {
+    (50,133.7) (100,141.2) (150,309.3) (200,1565.4) (250,5012.6) (300,12194.0) (350,7592.1) (400,19422.5)};
+\addlegendentry{Microsserviços}
+\addplot[dashed, gray, domain=40:410] {1000};
+\addlegendentry{Critério de 1 s}
+\end{semilogyaxis}
+\end{tikzpicture}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). Médias de dez execuções, com o orçamento padrão de 4 CPUs. Eixo vertical em escala logarítmica. Após a saturação, os resultados variam muito entre as execuções, o que explica a oscilação da curva dos microsserviços.}
+\end{figure}
+
 \section{Escalabilidade}
 
 Os testes de escalabilidade utilizaram o teste de estresse do cenário misto, com oito degraus
 de trinta segundos, repetido cinco vezes para cada configuração, alternando a ordem das
-arquiteturas. Em todas as configurações, considera-se como vazão máxima sustentada a taxa do
+arquiteturas. A configuração com o orçamento padrão de 4 CPUs, sem balanceador, foi executada
+dez vezes, já que o mesmo teste também integrou a etapa de desempenho. Em todas as configurações, considera-se como vazão máxima sustentada a taxa do
 último degrau em que o percentil 95 do tempo de resposta permaneceu abaixo de um segundo e a
 taxa de erros abaixo de 1\%. Como a taxa aumenta em degraus, a vazão real de saturação está entre
 o valor informado e o degrau seguinte, que é 50 iterações por segundo maior nos testes com taxa
@@ -118,13 +271,13 @@ entre os serviços na mesma proporção utilizada no orçamento padrão.
 \hline
 \textbf{Arquitetura} & \textbf{CPUs} & \textbf{Vazão sustentada (it/s)} & \textbf{CPU média (núcleos)} & \textbf{Memória máxima (MB)} & \textbf{Inicialização (s)} \\ \hline
 \multirow{3}{*}{Monolítica} & 2 & 200 & 0,61 & 600 & 18 \\ \cline{2-6}
- & 4 & 200 & 0,61 & 681 & 17 \\ \cline{2-6}
+ & 4 & 200 & 0,61 & 697 & 16 \\ \cline{2-6}
  & 8 & 225 & 0,61 & 830 & 16 \\ \hline
 \multirow{3}{*}{Microsserviços} & 2 & $<$ 50 & 1,10 & 2.705 & 107 \\ \cline{2-6}
- & 4 & 150 & 2,14 & 2.578 & 73 \\ \cline{2-6}
+ & 4 & 150 & 2,14 & 2.602 & 74 \\ \cline{2-6}
  & 8 & 225 & 3,08 & 2.639 & 57 \\ \hline
 \end{tabular}
-\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). A vazão sustentada foi a mesma nas cinco repetições de cada configuração. CPU média e memória máxima referem-se à camada de aplicação durante todo o teste; a inicialização é o tempo até todas as aplicações estarem prontas.}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). A vazão sustentada foi a mesma em todas as repetições de cada configuração. CPU média e memória máxima referem-se à camada de aplicação durante todo o teste; a inicialização é o tempo médio até todas as aplicações estarem prontas, considerando, no orçamento de 4 CPUs, todas as subidas do ambiente com esse orçamento.}
 \end{table}
 
 O monólito praticamente não se beneficiou do aumento de processadores. Com 2 CPUs, sustentou as
@@ -141,8 +294,8 @@ Os microsserviços, por outro lado, foram limitados pelo processador em todos os
 degrau, de 50 iterações por segundo: o percentil 95 das compras chegou a 12 segundos, com o
 \textit{gateway} e os serviços de produtos, lojas, pedidos e pagamentos operando no limite de CPU
 atribuído. Com 4 CPUs, a vazão sustentada foi de 150 iterações por segundo. Na calibração, que
-utilizou degraus de um minuto, essa configuração havia sustentado 200; nas cinco repetições, o
-degrau de 200 resultou em um percentil 95 médio de 1,4~s, pouco acima do critério, o que situa a
+utilizou degraus de um minuto, essa configuração havia sustentado 200; nas dez repetições, o
+degrau de 200 resultou em um percentil 95 médio de 1,6~s, acima do critério, o que situa a
 capacidade dessa configuração entre 150 e 200 iterações por segundo. Com 8 CPUs, a vazão chegou a
 225, um ganho de 50\% em relação a 4 CPUs e eficiência de 0,75. Nesse orçamento, o limite passou a
 ser o \textit{gateway}, que operou no seu teto de 1,5 CPU, enquanto os serviços de pedidos e de
@@ -182,7 +335,7 @@ vazão e o aumento do orçamento de CPU da camada de aplicação em relação à
 
 As execuções de referência sustentaram a mesma vazão das execuções sem balanceador, 200
 iterações por segundo no monólito e 150 nos microsserviços, e o percentil 95 no primeiro degrau
-variou de 109 para 110~ms no monólito e de 130 para 142~ms nos microsserviços. O custo do
+variou de 110 para 110~ms no monólito e de 134 para 143~ms nos microsserviços. O custo do
 balanceador foi maior nos microsserviços porque, nessa configuração, as chamadas entre os serviços
 também passam por ele.
 
@@ -202,6 +355,37 @@ instâncias, e o serviço de lojas, que não foi replicado, também atingiu o se
 O aumento de memória foi de 1,5 GB, equivalente às quatro novas máquinas virtuais Java, e o tempo
 até todas as aplicações estarem prontas passou de 77 para 85 segundos nos microsserviços e de 16
 para 19 segundos no monólito.
+
+A Figura~\ref{fig:escala} reúne a vazão máxima sustentada de todas as configurações avaliadas.
+
+\begin{figure}[htbp]
+\centering
+\caption{Vazão máxima sustentada por configuração no cenário misto}
+\label{fig:escala}
+\begin{tikzpicture}
+\begin{axis}[
+    ybar, bar width=12pt,
+    width=0.95\textwidth, height=7cm,
+    ylabel={Iterações por segundo},
+    symbolic x coords={2 CPUs, 4 CPUs, 8 CPUs, 1 instância, 2 instâncias},
+    xtick=data,
+    ymin=0, ymax=480,
+    enlarge x limits=0.15,
+    legend pos=north west, legend cell align=left,
+    nodes near coords, nodes near coords style={font=\scriptsize},
+    tick label style={font=\small}, label style={font=\small}, legend style={font=\small},
+    ymajorgrids, grid style={gray!25},
+]
+\addplot[fill=blue!60, draw=blue!80] coordinates {
+    (2 CPUs,200) (4 CPUs,200) (8 CPUs,225) (1 instância,200) (2 instâncias,405)};
+\addlegendentry{Monolítica}
+\addplot[fill=red!55, draw=red!80] coordinates {
+    (2 CPUs,0) (4 CPUs,150) (8 CPUs,225) (1 instância,150) (2 instâncias,225)};
+\addlegendentry{Microsserviços}
+\end{axis}
+\end{tikzpicture}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). As configurações com instâncias utilizam o balanceador Nginx e 4 CPUs por instância; nos microsserviços, com duas instâncias, apenas quatro serviços foram replicados. Com 2 CPUs, os microsserviços não sustentaram o primeiro degrau, de 50 iterações por segundo.}
+\end{figure}
 
 \section{Manutenibilidade}
 
@@ -236,6 +420,53 @@ mensagens, as classes de representação de dados de outros serviços, as config
 aplicação e o \textit{API Gateway}. As médias ligeiramente menores de acoplamento e de falta de
 coesão nos microsserviços refletem justamente esse grande número de classes pequenas e simples,
 e não uma melhora da estrutura das regras de negócio.
+
+Como complemento às métricas, foi analisado o impacto de duas alterações hipotéticas, a partir
+da identificação, no código das duas versões, dos arquivos que precisariam ser modificados. A
+primeira alteração é a inclusão de um novo atributo no produto, como a marca, que também precise
+ser registrado e exibido nos itens do pedido. A segunda é a inclusão de um novo meio de
+pagamento, como o boleto, que não exija dados adicionais do comprador. A
+Tabela~\ref{tab:impacto} apresenta o resultado.
+
+\begin{table}[htbp]
+\centering
+\caption{Impacto de duas alterações hipotéticas}
+\label{tab:impacto}
+\footnotesize
+\begin{tabular}{|>{\raggedright\arraybackslash}p{5.2cm}|>{\centering\arraybackslash}p{2.0cm}|>{\centering\arraybackslash}p{2.0cm}|>{\centering\arraybackslash}p{2.0cm}|>{\centering\arraybackslash}p{2.0cm}|}
+\hline
+\multirow{2}{*}{\textbf{Item}} & \multicolumn{2}{c|}{\textbf{Novo atributo}} & \multicolumn{2}{c|}{\textbf{Novo pagamento}} \\ \cline{2-5}
+ & \textbf{Monolítica} & \textbf{Microsserv.} & \textbf{Monolítica} & \textbf{Microsserv.} \\ \hline
+Arquivos alterados ou criados & 8 & 9 & 4 & 5 \\ \hline
+Módulos ou serviços afetados & 2 & 2 & 1 & 2 \\ \hline
+Implantações necessárias & 1 & 2 & 1 & 2 \\ \hline
+\end{tabular}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). As contagens incluem o \textit{script} de criação do banco de dados.}
+\end{table}
+
+No novo atributo, as duas versões exigem as mesmas alterações no produto, na sua entidade, nos
+objetos de requisição e de resposta e no \textit{script} do banco de dados, e no pedido, na
+entidade do item, nos seus objetos de transferência e no serviço que copia os dados do produto
+para o item. A diferença é que, nos microsserviços, o serviço de pedidos mantém a sua própria
+representação do produto, utilizada pelo cliente HTTP, que também precisa ser alterada, enquanto
+no monólito o módulo de pedidos utiliza diretamente o objeto de resposta do módulo de produtos.
+Por outro lado, nos microsserviços, o serviço de produtos pode ser implantado primeiro, sem
+interromper o serviço de pedidos, já que um atributo a mais na resposta é ignorado pela versão
+anterior do cliente.
+
+No novo meio de pagamento, o monólito exige a inclusão do valor na enumeração dos tipos de
+pagamento, uma nova estratégia de pagamento, a sua inclusão na fábrica de estratégias e a
+alteração da restrição do banco de dados. Nos microsserviços, as mesmas alterações ocorrem no
+serviço de pagamentos, mas o serviço de pedidos tem uma cópia da enumeração, utilizada para
+validar a requisição de compra, que também precisa ser alterada. As duas implantações precisam
+seguir uma ordem: se o serviço de pedidos aceitar o novo tipo antes de o serviço de pagamentos
+estar atualizado, as compras com o novo meio de pagamento falharão. Se o novo meio exigisse
+dados adicionais do comprador, os objetos de dados de pagamento, que também são duplicados nos
+dois serviços, precisariam ser alterados em ambos.
+
+Nas duas alterações, o número de arquivos foi semelhante, porque os módulos do monólito seguem
+as mesmas fronteiras dos serviços. A diferença está na duplicação de representações entre os
+serviços, que precisam ser mantidas sincronizadas manualmente, e na coordenação das implantações.
 
 \section{Complexidade de Desenvolvimento}
 
@@ -277,9 +508,10 @@ cada alteração precisa ser compilada e empacotada antes de ser testada.
 
 A Tabela~\ref{tab:implantacao} apresenta as medições relacionadas à implantação. Os tempos de
 construção correspondem à geração das imagens Docker sem reaproveitamento de camadas, em três
-repetições, e os tempos de inicialização foram medidos nas seis subidas do ambiente realizadas
-durante a calibração, três para cada arquitetura, desde o comando de subida até que todas as
-aplicações respondessem.
+repetições. Os tempos de inicialização foram medidos nas 63 subidas de cada arquitetura com o
+orçamento padrão de 4 CPUs, desde o comando de subida até que todas as aplicações
+respondessem, e o consumo em repouso foi medido durante dois minutos com as aplicações no ar e
+sem carga, em cinco repetições.
 
 \begin{table}[htbp]
 \centering
@@ -294,19 +526,101 @@ Contêineres em execução (aplicações e infraestrutura) & 3 & 11 \\ \hline
 Tamanho das imagens & 593 MB & 480 a 610 MB cada; 3,9 GB no total \\ \hline
 Espaço em disco, descontada a imagem base compartilhada (402 MB) & 191 MB & 1,1 GB \\ \hline
 Tempo médio de construção das imagens & 52 s & 72 s \\ \hline
-Tempo médio de inicialização do Spring Boot (aplicação mais lenta) & 8,8 s & 36,9 s \\ \hline
-Tempo médio até todas as aplicações estarem prontas & 19 s & 76 s \\ \hline
+Tempo médio de inicialização do Spring Boot (aplicação mais lenta) & 8,0 s & 39,0 s \\ \hline
+Tempo médio até todas as aplicações estarem prontas & 16,4 s & 73,9 s \\ \hline
+Memória das aplicações em repouso & 465 MB & 1.794 MB \\ \hline
+Memória total em repouso (aplicações e infraestrutura) & 836 MB & 2.649 MB \\ \hline
+CPU total em repouso & 0,03 núcleo & 0,30 núcleo \\ \hline
 \end{tabular}
-\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). A contagem de contêineres não inclui o simulador do Mercado Pago, utilizado apenas nos testes.}
+\par\vspace{4pt}{\footnotesize Fonte: Elaborada pelo autor (2026). A contagem de contêineres não inclui o simulador do Mercado Pago, utilizado apenas nos testes. Os intervalos de confiança de 95\% do tempo até todas as aplicações estarem prontas foram de 16,1 a 16,6 s no monólito e de 72,8 a 75,0 s nos microsserviços.}
 \end{table}
 
 A versão em microsserviços exige sete imagens e onze contêineres, contra uma imagem e três
 contêineres do monólito, já que, além das aplicações, precisa do Kafka e do Zookeeper. A
-inicialização completa levou, em média, quatro vezes mais tempo. Parte dessa diferença decorre
-da divisão do orçamento de CPU: cada serviço inicializa com no máximo 0,5 ou 0,75 CPU, enquanto o
+inicialização completa levou, em média, 4,5 vezes mais tempo. Parte dessa diferença decorre da
+divisão do orçamento de CPU: cada serviço inicializa com no máximo 0,5 ou 0,75 CPU, enquanto o
 monólito dispõe das 4 CPUs, e os serviços que dependem do Kafka aguardam o \textit{broker} estar
-pronto.
+pronto. O serviço mais lento para inicializar foi o de pedidos.
+
+Em repouso, as aplicações da versão em microsserviços ocuparam 3,9 vezes mais memória do que o
+monólito, e o ambiente completo, 3,2 vezes mais. O consumo de CPU sem carga foi cerca de nove
+vezes maior,
+quase todo do Kafka, que utilizou 0,25 núcleo mesmo sem mensagens sendo trocadas; as sete
+aplicações, somadas, utilizaram 0,02 núcleo. Esse custo fixo da infraestrutura de mensageria
+existe independentemente do volume de uso da aplicação.
 
 \section{Discussão}
 
+Os resultados mostram que, no ambiente avaliado, a arquitetura monolítica foi superior em
+desempenho, consumo de recursos, volume de código e simplicidade de implantação, enquanto a
+arquitetura de microsserviços apresentou vantagens mais específicas: o isolamento entre as
+partes do sistema, a possibilidade de escalar apenas os serviços mais demandados e a
+implantação independente de cada serviço.
+
+No desempenho, o monólito respondeu mais rápido em todos os cenários e sustentou cargas maiores
+com o mesmo orçamento de recursos, o que está de acordo com \citeonline{blinowski2022}, que
+também observaram desempenho superior do monólito em uma única máquina, e com
+\citeonline{vale2025}, que registrou menor latência no monólito. O acréscimo no tempo de
+resposta das operações que envolvem vários serviços foi menor do que o relatado por
+\citeonline{vale2025}, de cerca de 147\%: neste trabalho, a criação de pedidos foi 20\% mais lenta
+na mediana. Como a comunicação ocorreu em uma rede virtual local, esse acréscimo tende a ser
+maior em um ambiente distribuído real. As diferenças também foram maiores do que as observadas
+por \citeonline{aldebagy2018}, que encontraram desempenho semelhante entre as arquiteturas sob
+carga. Uma explicação para essa diferença é a forma de alocação dos recursos: neste trabalho, o
+mesmo orçamento foi dividido entre os serviços, e a capacidade dos microsserviços passou a ser
+limitada pelo serviço mais demandado, como o \textit{gateway} ou o serviço de pagamentos,
+enquanto outros permaneciam ociosos. O mesmo efeito explica a sensibilidade ao aquecimento da
+máquina virtual Java, que, com frações pequenas de CPU, levou o serviço de produtos à saturação
+com metade da carga suportada após o aquecimento completo.
+
+Por outro lado, o limite do monólito não esteve no processador, mas em uma configuração padrão:
+o \textit{pool} de dez conexões com o banco de dados, ocupadas durante a chamada ao serviço
+externo de pagamento. Essa característica fez com que a falha do fluxo de compra, ao saturar,
+afetasse também as consultas ao catálogo, já que todos os fluxos compartilham os mesmos
+recursos. Nos microsserviços, a saturação dos serviços de pedidos e de pagamentos não impediu o
+funcionamento do catálogo, o que confirma, na prática, o isolamento de falhas apontado por
+\citeonline{newman2021} como uma das vantagens dessa arquitetura.
+
+Na escalabilidade, o resultado contraria a ideia de que os microsserviços escalam melhor do que
+o monólito. A replicação do monólito inteiro atrás de um balanceador, que corresponde ao eixo X
+do cubo de escalabilidade de \citeonline{abbott2015}, dobrou a vazão com eficiência próxima de
+um, mesmo sem nenhuma alteração no código. Nos microsserviços, a replicação seletiva permitiu
+alcançar a mesma vazão do orçamento de 8 CPUs com 6,5 CPUs, o que mostra a vantagem de escalar
+apenas as partes mais demandadas, mas exigiu identificar os gargalos de cada serviço, e o limite
+apenas se deslocou para os serviços que não foram replicados. Ao contrário de
+\citeonline{blinowski2022}, que consideraram a escalabilidade vertical mais vantajosa, neste
+trabalho a escalabilidade vertical do monólito foi praticamente nula, porque o seu gargalo não
+dependia do número de processadores. Esse resultado indica que, em uma aplicação desse porte,
+o fator limitante tende a ser a configuração dos recursos compartilhados, e não a arquitetura
+em si.
+
+Quanto aos recursos, os microsserviços consumiram de duas a cinco vezes mais CPU e cerca de
+quatro vezes mais memória durante a carga, e 3,2 vezes mais memória em repouso, ordem de
+grandeza semelhante à observada por \citeonline{vale2025}, que registrou um consumo de memória em
+repouso 271\% maior. Esse custo fixo, decorrente das sete máquinas virtuais Java e da
+infraestrutura de mensageria, contrasta com a redução de custos relatada por
+\citeonline{villamizar2016}, obtida em nuvem com serviços gerenciados que escalavam cada
+microsserviço de forma independente e sob demanda, condições que não foram reproduzidas neste
+trabalho.
+
+Nos critérios de manutenibilidade e de complexidade de desenvolvimento, as métricas por classe
+foram praticamente iguais, mas a versão em microsserviços exigiu cerca de 50\% mais código,
+cinco vezes mais dependências e seis vezes mais configuração para as mesmas funcionalidades. A
+análise das alterações hipotéticas mostrou que a separação em serviços não reduziu o número de
+arquivos alterados, já que o monólito foi organizado em módulos com as mesmas fronteiras, mas
+acrescentou representações duplicadas entre os serviços e a necessidade de coordenar as
+implantações. Os benefícios atribuídos aos microsserviços na manutenção, como a autonomia de
+equipes diferentes sobre cada serviço \cite{newman2021}, dependem de um contexto organizacional
+que não existe em um projeto com um único desenvolvedor. Esse resultado está de acordo com
+\citeonline{mendes2021}, que indica o monólito para a fase de descoberta do domínio, e com a
+recomendação de \citeonline{fowler2015} de iniciar novos sistemas como monólitos.
+
 \section{Considerações Finais}
+
+Este capítulo apresentou os resultados da comparação entre as duas versões da aplicação. A
+versão monolítica apresentou menor tempo de resposta, maior capacidade com o mesmo orçamento de
+recursos, menor consumo de CPU e de memória, menos código e uma implantação mais simples e
+rápida, e dobrou a sua vazão ao ser replicada. A versão em microsserviços apresentou isolamento
+de falhas entre os fluxos da aplicação, permitiu escalar apenas os serviços mais demandados e
+implantar cada serviço de forma independente, mas com custo maior de recursos, de código e de
+operação. As conclusões do trabalho são apresentadas no próximo capítulo.

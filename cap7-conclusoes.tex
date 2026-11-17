@@ -3,6 +3,84 @@
 
 \section{Considerações Finais}
 
+Este trabalho comparou as arquiteturas monolítica e de microsserviços por meio de duas versões
+funcionalmente equivalentes de uma aplicação de \textit{e-commerce}, desenvolvidas em Java com o
+Spring Boot e avaliadas em um ambiente conteinerizado, com o mesmo orçamento de recursos para as
+duas arquiteturas. A equivalência entre as versões foi verificada por testes automatizados, e a
+comparação considerou os critérios de desempenho, escalabilidade, manutenibilidade,
+complexidade de desenvolvimento e implantação, com cinco repetições de cada teste de carga e
+de escalabilidade.
+
+Os objetivos propostos foram alcançados. As diferenças conceituais entre as arquiteturas foram
+apresentadas no referencial teórico, e o estado da arte reuniu trabalhos que compararam as
+duas abordagens, mostrando que os seus resultados não são uniformes. As duas versões da
+aplicação foram desenvolvidas com as mesmas regras de negócio, rotas e respostas, incluindo
+autenticação, catálogo de produtos, personalização da loja, pedidos e pagamentos integrados ao
+Mercado Pago, e foram avaliadas segundo os cinco critérios definidos.
+
+Em resposta à questão que motivou o trabalho, os resultados indicam que, para uma aplicação de
+porte pequeno a médio, desenvolvida por uma única pessoa e executada com recursos limitados, a
+arquitetura monolítica se mostrou mais vantajosa na maioria dos aspectos. O monólito respondeu
+mais rápido, sustentou cargas maiores com os mesmos recursos, consumiu menos processador e
+memória, exigiu menos código e configuração e foi implantado com menos artefatos e em menos
+tempo. Além disso, a sua replicação atrás de um balanceador de carga dobrou a vazão sem nenhuma
+alteração no código, o que mostra que o monólito também pode ser escalado horizontalmente.
+
+A arquitetura de microsserviços se mostrou vantajosa em aspectos mais específicos: o
+isolamento de falhas, que manteve o catálogo funcionando enquanto o fluxo de compra estava
+sobrecarregado, a possibilidade de escalar apenas os serviços mais demandados e a implantação
+independente de cada serviço. Esses benefícios, porém, tiveram um custo elevado em recursos,
+em código e em operação, e dependem de um conhecimento detalhado do comportamento de cada
+serviço para serem aproveitados. Assim, os microsserviços tendem a compensar em contextos com
+várias equipes, partes do sistema com demandas muito diferentes entre si e infraestrutura
+capaz de escalar cada serviço de forma automática, condições que não estavam presentes neste
+trabalho.
+
+Os resultados também mostraram que configurações padrão e a forma de distribuir os recursos
+influenciam a comparação tanto quanto a arquitetura em si. O limite do monólito foi imposto pelo
+\textit{pool} de conexões com o banco de dados, e o dos microsserviços, pela fração de CPU
+atribuída a cada serviço, inclusive durante o aquecimento da máquina virtual Java. Esses fatores
+devem ser considerados por quem pretende escolher entre as arquiteturas ou comparar os seus
+desempenhos.
+
 \section{Contribuições}
 
+As principais contribuições deste trabalho são:
+
+\begin{itemize}
+    \item duas implementações funcionalmente equivalentes de uma aplicação de
+    \textit{e-commerce}, uma monolítica e outra em microsserviços, com integração de
+    pagamentos, armazenamento de arquivos e comunicação assíncrona, cuja equivalência é
+    verificada por testes automatizados;
+    \item um ambiente de testes reproduzível, com orçamento de recursos equivalente para as
+    duas arquiteturas, simulação do serviço de pagamento, cenários de carga, testes de
+    escalabilidade vertical e horizontal e consolidação estatística automatizada dos
+    resultados;
+    \item uma comparação quantitativa entre as arquiteturas em cinco critérios, com resultados
+    que podem auxiliar desenvolvedores na escolha da arquitetura de novos projetos;
+    \item a identificação de fatores que influenciam a comparação além da própria arquitetura,
+    como as configurações padrão do \textit{framework}, a divisão dos recursos entre os
+    serviços e o aquecimento da máquina virtual Java com frações pequenas de processador.
+\end{itemize}
+
 \section{Trabalhos Futuros}
+
+A partir das limitações e dos resultados deste trabalho, sugerem-se os seguintes trabalhos
+futuros:
+
+\begin{itemize}
+    \item executar a comparação em um ambiente distribuído, com os serviços em máquinas
+    diferentes, para medir o efeito da latência de uma rede real sobre os microsserviços;
+    \item repetir os testes com as configurações ajustadas para cada arquitetura, como o
+    tamanho dos \textit{pools} de conexões, e com um aquecimento mais longo da máquina virtual
+    Java, para avaliar a capacidade das duas versões sem a influência das configurações
+    padrão;
+    \item avaliar as arquiteturas em uma plataforma de orquestração, como o Kubernetes, com
+    escalabilidade automática, e comparar o custo de infraestrutura das duas versões em um
+    provedor de nuvem;
+    \item avaliar a resiliência das arquiteturas por meio de testes com falhas induzidas, como
+    a interrupção de serviços e do banco de dados;
+    \item acompanhar a evolução das duas versões ao longo do tempo e com equipes diferentes,
+    para avaliar a manutenibilidade em um contexto mais próximo daquele em que os
+    microsserviços são recomendados.
+\end{itemize}
